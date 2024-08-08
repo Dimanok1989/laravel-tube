@@ -9,6 +9,13 @@ class TubeProcess extends Model
 {
     use SoftDeletes;
 
+    const STATUS_CREATED = 1;
+    const STATUS_DOWNLOAD = 2;
+    const STATUS_UPLOAD = 3;
+    const STATUS_RENDER = 4;
+    const STATUS_DONE = 5;
+    const STATUS_FAIL = 6;
+
     /**
      * The attributes that are mass assignable.
      *

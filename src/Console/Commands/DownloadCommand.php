@@ -28,8 +28,9 @@ class DownloadCommand extends Command
     public function handle(): void
     {
         $service = new TubeService($this->argument('url'));
+        $meta = $service->getMeta();
 
-        dd($service->getMeta());
+        dd($meta->getItag(1080));
 
         dd($this->argument('url'));
     }

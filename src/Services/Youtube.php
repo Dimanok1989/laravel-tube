@@ -13,8 +13,19 @@ class Youtube
      */
     protected $phyton;
 
+    /**
+     * Мета данные видео
+     * 
+     * @var null|array
+     */
     protected $meta;
 
+    /**
+     * Инициализация хостинг сервиса
+     * 
+     * @param string $url
+     * @return void
+     */
     public function __construct(
         protected string $url
     ) {
@@ -24,7 +35,12 @@ class Youtube
         }
     }
 
-    private function setMeta()
+    /**
+     * Получает и сохраняет мета данные видео
+     * 
+     * @return null|array
+     */
+    private function setMeta(): ?array
     {
         $result = Process::run([
             $this->phyton,
@@ -32,10 +48,15 @@ class Youtube
             "\"{$this->url}\"",
         ]);
 
-        dd($result->output());
+        return $this->meta = json_decode($result->output(), true);
     }
 
-    public function getMeta()
+    /**
+     * Выводит мета данные видео
+     * 
+     * @return null|array
+     */
+    public function getMeta(): ?array
     {
         return $this->meta ?: $this->setMeta();
     }

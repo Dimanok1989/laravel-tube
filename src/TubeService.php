@@ -4,6 +4,7 @@ namespace Kolgaev\Tube;
 
 use Illuminate\Support\Facades\Storage;
 use Kolgaev\Tube\Enums\Tubes;
+use Kolgaev\Tube\Resources\MetaResource;
 
 class TubeService
 {
@@ -27,6 +28,13 @@ class TubeService
      * @var null|string
      */
     protected $tubeId;
+
+    /**
+     * Мета данные
+     * 
+     * @var null|\Kolgaev\Tube\Resources\MetaResource
+     */
+    protected $meta;
 
     /**
      * Инициализация сервиса
@@ -78,8 +86,15 @@ class TubeService
         return $this->tubeId = $tubeId;
     }
 
+    /**
+     * Выводит мета данные видео
+     * 
+     * @return \Kolgaev\Tube\Resources\MetaResource
+     */
     public function getMeta()
     {
-        return $this->client()->getMeta();
+        return $this->meta ?: new MetaResource(
+            $this->client()->getMeta()
+        );
     }
 }
