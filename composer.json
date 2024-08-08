@@ -1,0 +1,17 @@
+{
+    "name": "kolgaev/laravel-tube",
+    "description": "Downloader video",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Kolgaev\\Tube\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Kolgaev\\Tube\\ServiceProvider"
+            ]
+        }
+    }
+}
