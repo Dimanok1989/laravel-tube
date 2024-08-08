@@ -3,6 +3,7 @@
 namespace Kolgaev\Tube\Console\Commands;
 
 use Illuminate\Console\Command;
+use Kolgaev\Tube\TubeService;
 
 class DownloadCommand extends Command
 {
@@ -26,6 +27,10 @@ class DownloadCommand extends Command
      */
     public function handle(): void
     {
+        $service = new TubeService($this->argument('url'));
+
+        dd($service->getMeta());
+
         dd($this->argument('url'));
     }
 }
