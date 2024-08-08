@@ -23,6 +23,7 @@ return new class extends Migration
             $table->timestamp('publish_date')->nullable()->comment('Дата публикации');
             $table->foreignId('user_id')->nullable()->comment('Идентификатор пользователя, инициализировавший заагрузку');
             $table->text('callback_url')->nullable()->comment('Ссылка обратного уведомления');
+            $table->jsonb('data')->nullable()->comment('Дополнительные данные');
             $table->timestamps();
             $table->softDeletes();
         });

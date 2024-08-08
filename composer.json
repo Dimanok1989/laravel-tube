@@ -2,6 +2,11 @@
     "name": "kolgaev/laravel-tube",
     "description": "Downloader video",
     "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.0|^8.1",
+        "laravel/framework": "^10.0|^11.0"
+    },
     "autoload": {
         "psr-4": {
             "Kolgaev\\Tube\\": "src/"
@@ -10,7 +15,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Kolgaev\\Tube\\ServiceProvider"
+                "Kolgaev\\Tube\\Providers\\TubeServiceProvider"
             ]
         }
     }
