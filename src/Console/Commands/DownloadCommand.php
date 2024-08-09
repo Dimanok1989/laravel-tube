@@ -28,9 +28,15 @@ class DownloadCommand extends Command
     public function handle(): void
     {
         $service = new TubeService($this->argument('url'));
-        $meta = $service->getMeta();
 
-        dd($meta->getItag(1080));
+        $itag = $service->meta()->getItag(1080, "webm");
+
+        if (empty($itag)) {
+            $this->error("ITAG не определён");
+            return;
+        }
+
+        $service->download($itag);
 
         dd($this->argument('url'));
     }

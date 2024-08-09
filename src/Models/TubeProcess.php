@@ -41,7 +41,6 @@ class TubeProcess extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'uuid' => 'uuid',
         'publish_date' => "datetime",
         'data' => "array",
     ];

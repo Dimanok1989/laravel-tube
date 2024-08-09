@@ -3,7 +3,9 @@
 namespace Kolgaev\Tube;
 
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Kolgaev\Tube\Enums\Tubes;
+use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\Resources\MetaResource;
 
 class TubeService
@@ -18,7 +20,7 @@ class TubeService
     /**
      * Тип видеохостинга
      * 
-     * @var null|\Kolgaev\Tube\Enums\Tubes
+     * @var \Kolgaev\Tube\Enums\Tubes
      */
     protected $tube;
 
@@ -37,6 +39,15 @@ class TubeService
     protected $meta;
 
     /**
+     * Модель процесса загрузки видео
+     * 
+     * @var \Kolgaev\Tube\Models\TubeProcess
+     */
+    protected $process;
+
+    protected $client;
+
+    /**
      * Инициализация сервиса
      * 
      * @param string $url
@@ -49,13 +60,51 @@ class TubeService
         $this->storage = Storage::disk(config('filesystems.default'));
 
         $this->parseUrl();
+
+        $this->setProcess();
     }
 
+    /**
+     * Клиент видеохостинга
+     * 
+     * @return \Kolgaev\Tube\Enums\Tubes
+     */
     private function client()
     {
+        if ($this->client) {
+            return $this->client;
+        }
+
         $client = $this->tube->client();
 
-        return new $client($this->url);
+        return $this->client = new $client($this->process, $this->url);
+    }
+
+    /**
+     * Создает процесс загрузки в базе данных
+     * 
+     * @return void
+     */
+    protected function setProcess()
+    {
+        $process = TubeProcess::firstOrCreate([
+            'type' => $this->tube->name,
+            'tube_id' => $this->tubeId,
+            'status' => TubeProcess::STATUS_CREATED,
+        ], [
+            'uuid' => Str::orderedUuid()->toString(),
+        ]);
+
+        $process->title = $this->meta()->getTitle();
+        $process->description = $this->meta()->getDescription();
+        $process->length = $this->meta()->getLength();
+        $process->publish_date = $this->meta()->getPublishDate();
+        $process->data = $this->meta()->toArray();
+        $process->user_id = auth()->id();
+
+        $process->save();
+
+        $this->process = $process;
     }
 
     /**
@@ -91,10 +140,36 @@ class TubeService
      * 
      * @return \Kolgaev\Tube\Resources\MetaResource
      */
-    public function getMeta()
+    public function meta()
     {
         return $this->meta ?: new MetaResource(
             $this->client()->getMeta()
         );
     }
+
+    /**
+     * Начало скачивание файлов
+     * 
+     * @param int $itag
+     */
+    public function download(int $itag)
+    {
+        $filename = Str::slug($this->process->title);
+
+        $dir = collect([
+            $this->tube->name,
+            $this->process->uuid
+        ])->join(DIRECTORY_SEPARATOR);
+
+        $this->storage->makeDirectory($dir);
+        $path = $this->storage->path($dir);
+
+        $this->client()->download($path, $filename, $itag);
+
+        dd($this->process->toArray());
+
+        return $this->client()->download($itag);
+    }
+
+    private function downloadVideo() {}
 }
