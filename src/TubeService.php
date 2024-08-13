@@ -43,7 +43,7 @@ class TubeService
      * 
      * @var \Kolgaev\Tube\Models\TubeProcess
      */
-    protected $process;
+    public static $process;
 
     protected $client;
 
@@ -61,7 +61,23 @@ class TubeService
 
         $this->parseUrl();
 
-        $this->setProcess();
+        self::$process = TubeProcess::firstOrCreate([
+            'type' => $this->tube->name,
+            'tube_id' => $this->tubeId,
+            'status' => TubeProcess::STATUS_CREATED,
+        ], [
+            'uuid' => Str::orderedUuid()->toString(),
+        ]);
+    }
+
+    /**
+     * Выводит ссылку на видео
+     * 
+     * @return string
+     */
+    public function url()
+    {
+        return $this->url;
     }
 
     /**
@@ -77,34 +93,17 @@ class TubeService
 
         $client = $this->tube->client();
 
-        return $this->client = new $client($this->process, $this->url);
+        return $this->client = new $client($this);
     }
 
     /**
-     * Создает процесс загрузки в базе данных
+     * Выводит модель процесса загрузки
      * 
-     * @return void
+     * @return \Kolgaev\Tube\Models\TubeProcess
      */
-    protected function setProcess()
+    public function process()
     {
-        $process = TubeProcess::firstOrCreate([
-            'type' => $this->tube->name,
-            'tube_id' => $this->tubeId,
-            'status' => TubeProcess::STATUS_CREATED,
-        ], [
-            'uuid' => Str::orderedUuid()->toString(),
-        ]);
-
-        $process->title = $this->meta()->getTitle();
-        $process->description = $this->meta()->getDescription();
-        $process->length = $this->meta()->getLength();
-        $process->publish_date = $this->meta()->getPublishDate();
-        $process->data = $this->meta()->toArray();
-        $process->user_id = auth()->id();
-
-        $process->save();
-
-        $this->process = $process;
+        return self::$process;
     }
 
     /**
@@ -142,9 +141,23 @@ class TubeService
      */
     public function meta()
     {
-        return $this->meta ?: new MetaResource(
+        if ($this->meta) {
+            return $this->meta;
+        }
+
+        $this->meta = new MetaResource(
             $this->client()->getMeta()
         );
+
+        self::$process->title = $this->meta->getTitle();
+        self::$process->description = $this->meta->getDescription();
+        self::$process->length = $this->meta->getLength();
+        self::$process->publish_date = $this->meta->getPublishDate();
+        self::$process->data = $this->meta->toArray();
+        self::$process->user_id = auth()->id();
+        self::$process->save();
+
+        return $this->meta;
     }
 
     /**
@@ -154,22 +167,16 @@ class TubeService
      */
     public function download(int $itag)
     {
-        $filename = Str::slug($this->process->title);
+        $filename = Str::slug(self::$process->title ?? null);
 
         $dir = collect([
             $this->tube->name,
-            $this->process->uuid
+            self::$process->uuid
         ])->join(DIRECTORY_SEPARATOR);
 
         $this->storage->makeDirectory($dir);
         $path = $this->storage->path($dir);
 
         $this->client()->download($path, $filename, $itag);
-
-        dd($this->process->toArray());
-
-        return $this->client()->download($itag);
     }
-
-    private function downloadVideo() {}
 }

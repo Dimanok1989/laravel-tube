@@ -3,6 +3,7 @@
 namespace Kolgaev\Tube\Resources;
 
 use Illuminate\Http\Resources\DelegatesToResource;
+use Kolgaev\Tube\Collection;
 
 class StreamResource extends Resource
 {
@@ -12,7 +13,7 @@ class StreamResource extends Resource
 
     public function __construct($resource)
     {
-        parent::__construct($resource);
+        parent::__construct(new Collection($resource));
 
         $this->extension = $this->extension();
     }
