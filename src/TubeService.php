@@ -2,9 +2,13 @@
 
 namespace Kolgaev\Tube;
 
+use Exception;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Enums\Tubes;
+use Kolgaev\Tube\Exceptions\HandlerBad;
+use Kolgaev\Tube\Exceptions\HandlerNotExists;
+use Kolgaev\Tube\Interfaces\HandlerInterface;
 use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\Resources\MetaResource;
 
@@ -68,6 +72,29 @@ class TubeService
         ], [
             'uuid' => Str::orderedUuid()->toString(),
         ]);
+    }
+
+    /**
+     * Обработка процесса
+     * 
+     * @return void
+     */
+    public function handle()
+    {
+        $mode = config('tube.mode');
+        $handler = __NAMESPACE__ . "\\Handlers\\" . ucfirst($mode) . "Handler";
+
+        if (!class_exists($handler)) {
+            throw new HandlerNotExists("Обработчик [$mode] не найден");
+        }
+
+        $handler = new $handler($this);
+
+        if (!is_a($handler, HandlerInterface::class)) {
+            throw new HandlerBad("Неизвестный обработчик [$mode]");
+        }
+
+        $handler->handle();
     }
 
     /**
