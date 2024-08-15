@@ -68,9 +68,9 @@ class TubeService
         self::$process = TubeProcess::firstOrCreate([
             'type' => $this->tube->name,
             'tube_id' => $this->tubeId,
-            'status' => TubeProcess::STATUS_CREATED,
         ], [
             'uuid' => Str::orderedUuid()->toString(),
+            'status' => TubeProcess::STATUS_CREATED,
         ]);
     }
 
@@ -84,17 +84,25 @@ class TubeService
         $mode = config('tube.mode');
         $handler = __NAMESPACE__ . "\\Handlers\\" . ucfirst($mode) . "Handler";
 
-        if (!class_exists($handler)) {
-            throw new HandlerNotExists("Обработчик [$mode] не найден");
+        try {
+
+            if (!class_exists($handler)) {
+                throw new HandlerNotExists("Обработчик [$mode] не найден");
+            }
+
+            $handler = new $handler($this);
+
+            if (!is_a($handler, HandlerInterface::class)) {
+                throw new HandlerBad("Неизвестный обработчик [$mode]");
+            }
+
+            $handler->handle();
+        } catch (Exception $e) {
+            dump($e->getMessage());
+            $this->process()->update([
+                'status' => TubeProcess::STATUS_FAIL
+            ]);
         }
-
-        $handler = new $handler($this);
-
-        if (!is_a($handler, HandlerInterface::class)) {
-            throw new HandlerBad("Неизвестный обработчик [$mode]");
-        }
-
-        $handler->handle();
     }
 
     /**
@@ -130,7 +138,7 @@ class TubeService
      */
     public function process()
     {
-        return self::$process;
+        return self::$process->refresh();
     }
 
     /**
@@ -172,6 +180,10 @@ class TubeService
             return $this->meta;
         }
 
+        if (self::$process->data) {
+            return $this->meta = new MetaResource(self::$process->data);
+        }
+
         $this->meta = new MetaResource(
             $this->client()->getMeta()
         );
@@ -205,5 +217,20 @@ class TubeService
         $path = $this->storage->path($dir);
 
         $this->client()->download($path, $filename, $itag);
+    }
+
+    /**
+     * Находит предпочитаемый поток для скачивания видео
+     * 
+     * @return null|array
+     */
+    public function getDonwnloadStream()
+    {
+        return $this->meta()
+            ->streams()
+            ->filter(fn($stream) => $stream->type == "video")
+            ->filter(fn($item) => strpos((string) $item->res, "1080") !== false)
+            ->filter(fn($item) => strpos((string) $item->mime_type, "mp4") !== false)
+            ->first();
     }
 }

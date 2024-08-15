@@ -54,6 +54,7 @@ class DownloadCommand extends Command
                     ])
                     ->all(),
                 default: $default,
+                scroll: 15,
             );
         } catch (Exception $e) {
             $this->error($e->getMessage());

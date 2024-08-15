@@ -6,8 +6,10 @@ use Exception;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Collection;
-use Kolgaev\Tube\Events\DownloadAudioProgressEvent;
-use Kolgaev\Tube\Events\DownloadVideoProgressEvent;
+use Kolgaev\Tube\Events\TubeDownloadAudioProgressEvent;
+use Kolgaev\Tube\Events\TubeDownloadedEvent;
+use Kolgaev\Tube\Events\TubeDownloadVideoProgressEvent;
+use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\Resources\StreamResource;
 use Kolgaev\Tube\TubeService;
 
@@ -118,6 +120,12 @@ class Youtube
         if ($stream->only_audio === false) {
             $this->downloadAudio($path, $filename);
         }
+
+        $this->service->process()->update([
+            'status' => TubeProcess::STATUS_DOWNLOADED,
+        ]);
+
+        TubeDownloadedEvent::dispatch($this->service->process()->uuid);
     }
 
     /**
@@ -149,7 +157,7 @@ class Youtube
             $command,
             $path,
             $filename,
-            DownloadVideoProgressEvent::class,
+            TubeDownloadVideoProgressEvent::class,
         );
 
         return "$path/$filename";
@@ -189,7 +197,7 @@ class Youtube
             $command,
             $path,
             $filename,
-            DownloadAudioProgressEvent::class,
+            TubeDownloadAudioProgressEvent::class,
         );
 
         return "$path/$filename";

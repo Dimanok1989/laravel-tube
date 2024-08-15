@@ -4,15 +4,16 @@ namespace Kolgaev\Tube\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Kolgaev\Tube\Enums\Tubes;
 
 class TubeProcess extends Model
 {
     use SoftDeletes;
 
     const STATUS_CREATED = 1;
-    const STATUS_DOWNLOAD = 2;
-    const STATUS_UPLOAD = 3;
-    const STATUS_RENDER = 4;
+    const STATUS_DOWNLOADED = 2;
+    const STATUS_UPLOADED = 3;
+    const STATUS_RENDERED = 4;
     const STATUS_DONE = 5;
     const STATUS_FAIL = 6;
 
@@ -41,6 +42,7 @@ class TubeProcess extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'type' => Tubes::class,
         'publish_date' => "datetime",
         'data' => "array",
     ];
@@ -53,5 +55,15 @@ class TubeProcess extends Model
     public function files()
     {
         return $this->hasMany(TubeFile::class);
+    }
+
+    /**
+     * Формирует ссылку на видео
+     * 
+     * @return string
+     */
+    public function getVideoUrlAttribute()
+    {
+        return $this->type->url($this->tube_id);
     }
 }
