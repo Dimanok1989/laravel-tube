@@ -10,7 +10,7 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class TubeDownloadAudioProgressEvent
+class TubeFailEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -19,7 +19,7 @@ class TubeDownloadAudioProgressEvent
      */
     public function __construct(
         public ?string $uuid,
-        public float $percent
+        public ?string $errorMessage
     ) {
         //
     }

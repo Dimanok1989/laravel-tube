@@ -11,9 +11,9 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Событие при завершении скачивания файлов
+ * Событие прогресса скачивания видео
  */
-class TubeDownloadedEvent
+class TubeDownloadProgressVideoEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,7 +21,8 @@ class TubeDownloadedEvent
      * Create a new event instance.
      */
     public function __construct(
-        public ?string $uuid
+        public ?string $uuid,
+        public float $percent
     ) {
         //
     }

@@ -26,7 +26,5 @@ class SelfHandler extends Handler
         $this->service->process()->update([
             'status' => TubeProcess::STATUS_UPLOADED,
         ]);
-
-        TubeDoneEvent::dispatch($this->service->process()->uuid);
     }
 }

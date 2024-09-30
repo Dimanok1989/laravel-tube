@@ -2,18 +2,12 @@
 
 namespace Kolgaev\Tube\Events;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Kolgaev\Tube\Models\TubeProcess;
 
-/**
- * Событие при завершении скачивания файлов
- */
-class TubeDownloadedEvent
+class WebhookEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,7 +15,8 @@ class TubeDownloadedEvent
      * Create a new event instance.
      */
     public function __construct(
-        public ?string $uuid
+        public TubeProcess $process,
+        public array $data
     ) {
         //
     }

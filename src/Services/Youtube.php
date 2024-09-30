@@ -5,10 +5,9 @@ namespace Kolgaev\Tube\Services;
 use Exception;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
-use Kolgaev\Tube\Collection;
-use Kolgaev\Tube\Events\TubeDownloadAudioProgressEvent;
 use Kolgaev\Tube\Events\TubeDownloadedEvent;
-use Kolgaev\Tube\Events\TubeDownloadVideoProgressEvent;
+use Kolgaev\Tube\Events\TubeDownloadProgressAudioEvent;
+use Kolgaev\Tube\Events\TubeDownloadProgressVideoEvent;
 use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\Resources\StreamResource;
 use Kolgaev\Tube\TubeService;
@@ -52,6 +51,12 @@ class Youtube
      */
     private function setMeta(): ?array
     {
+        $streams = optional($this->service->process())->data['streams'] ?? null;
+
+        if (!empty($streams)) {
+            return $this->meta = $this->service->process()->data;
+        }
+
         $result = Process::run([
             $this->phyton,
             realpath(__DIR__ . "/../../pytube/meta.py"),
@@ -72,7 +77,7 @@ class Youtube
                 ->all();
 
             throw new Exception(
-                $details['Reason'] ?? "Не удалось получить данные о видео, возможно оно было удалено"
+                $details['Reason'] ?? "Не удалось получить мета-данные о видео"
             );
         }
 
@@ -100,7 +105,7 @@ class Youtube
     private function stream(int $itag)
     {
         return new StreamResource(
-            collect($this->meta['streams'] ?? [])->firstWhere('itag', $itag)
+            collect($this->getMeta()['streams'] ?? [])->firstWhere('itag', $itag)
         );
     }
 
@@ -110,22 +115,19 @@ class Youtube
      * @param string $path
      * @param string $filename
      * @param null|int $itag
+     * @return array
      */
     public function download(string $path, string $filename, ?int $itag = null)
     {
         $stream = $this->stream($itag);
 
-        $this->downloadVideo($stream, $path, $filename);
+        $files[] = $this->downloadVideo($stream, $path, $filename);
 
         if ($stream->only_audio === false) {
-            $this->downloadAudio($path, $filename);
+            $files[] = $this->downloadAudio($path, $filename);
         }
 
-        $this->service->process()->update([
-            'status' => TubeProcess::STATUS_DOWNLOADED,
-        ]);
-
-        TubeDownloadedEvent::dispatch($this->service->process()->uuid);
+        return $files;
     }
 
     /**
@@ -157,8 +159,17 @@ class Youtube
             $command,
             $path,
             $filename,
-            TubeDownloadVideoProgressEvent::class,
+            TubeDownloadProgressVideoEvent::class,
         );
+
+        $this->service->process()->files()->firstOrCreate([
+            'type' => $stream->type,
+            'filename' => pathinfo($filename, PATHINFO_FILENAME),
+            'extension' => pathinfo($filename, PATHINFO_EXTENSION),
+            'mime_type' => $stream->mime_type,
+            'size' => $stream->filesize,
+            'quality' => $stream->res,
+        ]);
 
         return "$path/$filename";
     }
@@ -197,8 +208,17 @@ class Youtube
             $command,
             $path,
             $filename,
-            TubeDownloadAudioProgressEvent::class,
+            TubeDownloadProgressAudioEvent::class,
         );
+
+        $this->service->process()->files()->firstOrCreate([
+            'type' => $stream->type,
+            'filename' => pathinfo($filename, PATHINFO_FILENAME),
+            'extension' => pathinfo($filename, PATHINFO_EXTENSION),
+            'mime_type' => $stream->mime_type,
+            'size' => $stream->filesize,
+            'quality' => $stream->abr,
+        ]);
 
         return "$path/$filename";
     }
@@ -231,8 +251,12 @@ class Youtube
                     }
 
                     if ($tik == 1) {
+                        
                         preg_match("/(\d+.\d+)%/", $output, $matches);
-                        if (is_numeric($matches[1] ?? null)) {
+
+                        $percent = $matches[1] ?? null;
+
+                        if (is_numeric($percent) && $percent < 100) {
                             $event::dispatch(
                                 $this->service->process()->uuid ?? null,
                                 (float) $matches[1]

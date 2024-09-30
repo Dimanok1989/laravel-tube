@@ -10,7 +10,10 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class TubeDownloadVideoProgressEvent
+/**
+ * Событие прогресса скачивания аудиодорожки к видео
+ */
+class TubeDownloadProgressAudioEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

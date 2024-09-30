@@ -6,7 +6,15 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Kolgaev\Tube\Console\Commands\DownloadCommand;
 use Kolgaev\Tube\Events\TubeDoneEvent;
-use Kolgaev\Tube\Listeners\DoneTubeProcess;
+use Kolgaev\Tube\Events\TubeDownloadedEvent;
+use Kolgaev\Tube\Events\TubeDownloadProgressAudioEvent;
+use Kolgaev\Tube\Events\TubeDownloadProgressVideoEvent;
+use Kolgaev\Tube\Events\TubeFailEvent;
+use Kolgaev\Tube\Events\WebhookEvent;
+use Kolgaev\Tube\Listeners\DownloadDoneProcess;
+use Kolgaev\Tube\Listeners\DownloadedFiles;
+use Kolgaev\Tube\Listeners\DownloadProgress;
+use Kolgaev\Tube\Listeners\Webhook;
 
 class TubeServiceProvider extends ServiceProvider
 {
@@ -37,6 +45,18 @@ class TubeServiceProvider extends ServiceProvider
             ]);
         }
 
-        Event::listen(TubeDoneEvent::class, DoneTubeProcess::class);
+        // Процесс скачивания файлов
+        Event::listen(TubeDownloadProgressVideoEvent::class, DownloadProgress::class);
+        Event::listen(TubeDownloadProgressAudioEvent::class, DownloadProgress::class);
+        
+        // Завершение скачиваания файлов
+        Event::listen(TubeDownloadedEvent::class, DownloadedFiles::class);
+
+        // Обработка webhook
+        Event::listen(WebhookEvent::class, Webhook::class);
+
+        // Завершение всего процесса
+        Event::listen(TubeDoneEvent::class, DownloadDoneProcess::class);
+        Event::listen(TubeFailEvent::class, DownloadDoneProcess::class);
     }
 }
