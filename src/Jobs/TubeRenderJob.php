@@ -2,22 +2,21 @@
 
 namespace Kolgaev\Tube\Jobs;
 
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
-use Kolgaev\Tube\Events\CompletedEvent;
 use Kolgaev\Tube\Events\TubeDoneEvent;
 use Kolgaev\Tube\Events\TubeFailEvent;
 use Kolgaev\Tube\Models\TubeProcess;
 
 class TubeRenderJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Количество попыток выполнения задания

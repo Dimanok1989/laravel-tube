@@ -59,6 +59,11 @@ class TubeService
      */
     public static $process;
 
+    /**
+     * Клиент видеохостинга
+     * 
+     * @var object
+     */
     protected $client;
 
     /**
@@ -180,7 +185,7 @@ class TubeService
     /**
      * Клиент видеохостинга
      * 
-     * @return \Kolgaev\Tube\Enums\Tubes
+     * @return object
      */
     private function client()
     {
@@ -353,5 +358,18 @@ class TubeService
         }
 
         return $files ?? [];
+    }
+
+    /**
+     * Устаналиваает права на файл
+     * 
+     * @param string $path
+     * @return void
+     */
+    public static function setPermit(string $path)
+    {
+        // chown($path, env('TUBE_OWNER_USER', 'www-data'));
+        // chgrp($path, env('TUBE_OWNER_GROUP', 'www-data'));
+        chmod($path, 0755);
     }
 }

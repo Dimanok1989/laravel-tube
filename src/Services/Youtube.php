@@ -5,10 +5,8 @@ namespace Kolgaev\Tube\Services;
 use Exception;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
-use Kolgaev\Tube\Events\TubeDownloadedEvent;
 use Kolgaev\Tube\Events\TubeDownloadProgressAudioEvent;
 use Kolgaev\Tube\Events\TubeDownloadProgressVideoEvent;
-use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\Resources\StreamResource;
 use Kolgaev\Tube\TubeService;
 
@@ -125,6 +123,10 @@ class Youtube
 
         if ($stream->only_audio === false) {
             $files[] = $this->downloadAudio($path, $filename);
+        }
+
+        foreach ($files as $path) {
+            $this->service->setPermit($path);
         }
 
         return $files;

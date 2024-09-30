@@ -3,16 +3,18 @@
 namespace Kolgaev\Tube\Jobs;
 
 use Exception;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Kolgaev\Tube\Events\TubeDoneEvent;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Kolgaev\Tube\Events\TubeFailEvent;
 use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\TubeService;
 
 class DownloadFilesJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Количество попыток выполнения задания

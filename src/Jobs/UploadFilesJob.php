@@ -2,8 +2,11 @@
 
 namespace Kolgaev\Tube\Jobs;
 
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Kolgaev\Tube\Models\TubeFile;
@@ -12,7 +15,7 @@ use Kolgaev\Tube\TubeService;
 
 class UploadFilesJob implements ShouldQueue
 {
-    use Queueable;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Количество попыток выполнения задания
