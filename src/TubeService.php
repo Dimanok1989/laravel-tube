@@ -98,6 +98,11 @@ class TubeService
 
             self::$process = $data;
         }
+
+        if (!$this->storage->exists($this->tube->name)) {
+            $this->storage->makeDirectory($this->tube->name);
+            $this->setPermit($this->storage->path($this->tube->name));
+        }
     }
 
     /**
@@ -255,6 +260,8 @@ class TubeService
         $this->storage->makeDirectory($dir);
         $path = $this->storage->path($dir);
 
+        $this->setPermit($path);
+
         $this->client()->download($path, $filename, $itag);
 
         $this->process()->update([
@@ -368,8 +375,8 @@ class TubeService
      */
     public static function setPermit(string $path)
     {
-        // chown($path, env('TUBE_OWNER_USER', 'www-data'));
-        // chgrp($path, env('TUBE_OWNER_GROUP', 'www-data'));
+        chown($path, env('TUBE_OWNER_USER', 'www-data'));
+        chgrp($path, env('TUBE_OWNER_GROUP', 'www-data'));
         chmod($path, 0755);
     }
 }
