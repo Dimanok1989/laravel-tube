@@ -14,7 +14,8 @@ class TubeDoneEvent
      * Create a new event instance.
      */
     public function __construct(
-        public ?string $uuid
+        public ?string $uuid,
+        public ?string $path
     ) {
         //
     }

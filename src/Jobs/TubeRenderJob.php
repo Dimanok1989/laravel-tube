@@ -49,12 +49,14 @@ class TubeRenderJob implements ShouldQueue
         $storage = Storage::disk('local');
 
         $video = $this->process
-            ->files('type', 'video')
+            ->files()
+            ->where('type', 'video')
             ->orderByDesc('size')
             ->first();
 
         $audio = $this->process
-            ->files('type', 'audio')
+            ->files()
+            ->where('type', 'audio')
             ->orderByDesc('size')
             ->first();
 
@@ -94,6 +96,6 @@ class TubeRenderJob implements ShouldQueue
             'status' => TubeProcess::STATUS_RENDERED,
         ]);
 
-        TubeDoneEvent::dispatch($this->process->uuid);
+        TubeDoneEvent::dispatch($this->process->uuid, $storage->path($output));
     }
 }
