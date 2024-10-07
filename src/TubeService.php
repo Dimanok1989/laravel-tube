@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Enums\Tubes;
 use Kolgaev\Tube\Events\TubeDownloadedEvent;
+use Kolgaev\Tube\Events\TubeDownloadStartEvent;
 use Kolgaev\Tube\Exceptions\HandlerBad;
 use Kolgaev\Tube\Exceptions\HandlerNotExists;
 use Kolgaev\Tube\Exceptions\StreamNotFound;
@@ -250,6 +251,10 @@ class TubeService
      */
     public function download(int $itag)
     {
+        TubeDownloadStartEvent::dispatch(
+            $this->process()->uuid,
+        );
+
         $filename = Str::slug(self::$process->title ?? null);
 
         $dir = collect([
@@ -375,8 +380,17 @@ class TubeService
      */
     public static function setPermit(string $path)
     {
-        chown($path, env('TUBE_OWNER_USER', 'www-data'));
-        chgrp($path, env('TUBE_OWNER_GROUP', 'www-data'));
-        chmod($path, 0755);
+        try {
+            chown($path, env('TUBE_OWNER_USER', 'www-data'));
+            chgrp($path, env('TUBE_OWNER_GROUP', 'www-data'));
+        } catch (Exception) {
+            //
+        }
+
+        try {
+            chmod($path, 0755);
+        } catch (Exception) {
+            //
+        }
     }
 }

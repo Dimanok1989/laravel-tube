@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Kolgaev\Tube\Events\TubeDoneEvent;
 use Kolgaev\Tube\Events\TubeFailEvent;
+use Kolgaev\Tube\Events\TubeRenderStartEvent;
 use Kolgaev\Tube\Models\TubeProcess;
 
 class TubeRenderJob implements ShouldQueue
@@ -67,6 +68,11 @@ class TubeRenderJob implements ShouldQueue
         $dirname = pathinfo($video->path, PATHINFO_DIRNAME);
         $output = "$dirname/{$this->process->uuid}.{$video->extension}";
 
+        TubeRenderStartEvent::dispatch(
+            $this->process->uuid,
+            $storage->path($output)
+        );
+
         $command = collect([
             'ffmpeg',
             '-i "' . $storage->path($video->path) . '"',
@@ -96,6 +102,9 @@ class TubeRenderJob implements ShouldQueue
             'status' => TubeProcess::STATUS_RENDERED,
         ]);
 
-        TubeDoneEvent::dispatch($this->process->uuid, $storage->path($output));
+        TubeDoneEvent::dispatch(
+            $this->process->uuid,
+            $storage->path($output)
+        );
     }
 }

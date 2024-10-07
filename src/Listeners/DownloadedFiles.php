@@ -15,18 +15,20 @@ class DownloadedFiles
     /**
      * Обработка события завершения скачивания
      * 
-     * @param \Kolgaev\Tube\Events\TubeDownloadedEvent $event
+     * @param \Kolgaev\Tube\Events\TubeDownloadStartEvent|\Kolgaev\Tube\Events\TubeDownloadedEvent $event
      * @return void
      */
-    public function handle(TubeDownloadedEvent $event): void
+    public function handle(object $event): void
     {
         if (!$process = TubeProcess::whereUuid($event->uuid)->first()) {
             return;
         }
 
-        $process->update([
-            'status' => TubeProcess::STATUS_DOWNLOADED,
-        ]);
+        if ($event::class == TubeDownloadedEvent::class) {
+            $process->update([
+                'status' => TubeProcess::STATUS_DOWNLOADED,
+            ]);
+        }
 
         if ($process->callback_url ?? null) {
             Http::baseUrl($process->callback_url)

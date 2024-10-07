@@ -49,7 +49,8 @@ class TubeServiceProvider extends ServiceProvider
         Event::listen(TubeDownloadProgressVideoEvent::class, DownloadProgress::class);
         Event::listen(TubeDownloadProgressAudioEvent::class, DownloadProgress::class);
         
-        // Завершение скачиваания файлов
+        // События сохранения файлов
+        Event::listen(TubeDownloadStartEvent::class, DownloadedFiles::class);
         Event::listen(TubeDownloadedEvent::class, DownloadedFiles::class);
 
         // Обработка webhook
