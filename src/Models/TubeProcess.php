@@ -11,8 +11,12 @@ class TubeProcess extends Model
     use SoftDeletes;
 
     const STATUS_CREATED = 1;
+    const STATUS_VIDEO_DOWNLOADED = 7;
+    const STATUS_AUDIO_DOWNLOADED = 8;
     const STATUS_DOWNLOADED = 2;
+    const STATUS_UPLOAD_FILES = 9;
     const STATUS_UPLOADED = 3;
+    const STATUS_RENDER = 10;
     const STATUS_RENDERED = 4;
     const STATUS_DONE = 5;
     const STATUS_FAIL = 6;
