@@ -6,10 +6,7 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-/**
- * Событие при завершении скачивания файлов
- */
-class TubeDownloadStartEvent
+class TubeUploadFinishEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

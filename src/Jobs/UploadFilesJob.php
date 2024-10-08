@@ -9,6 +9,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Kolgaev\Tube\Events\TubeUploadFinishEvent;
+use Kolgaev\Tube\Events\TubeUploadStartEvent;
 use Kolgaev\Tube\Models\TubeFile;
 use Kolgaev\Tube\Models\TubeProcess;
 use Kolgaev\Tube\TubeService;
@@ -52,6 +54,8 @@ class UploadFilesJob implements ShouldQueue
      */
     public function handle(): void
     {
+        TubeUploadStartEvent::dispatch($this->process->uuid);
+
         $this->process->update([
             'status' => TubeProcess::STATUS_UPLOAD_FILES,
         ]);
@@ -73,6 +77,8 @@ class UploadFilesJob implements ShouldQueue
                     false
                 ));
         }
+
+        TubeUploadFinishEvent::dispatch($this->process->uuid);
 
         $this->process->update([
             'status' => TubeProcess::STATUS_UPLOADED,

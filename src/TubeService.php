@@ -251,10 +251,6 @@ class TubeService
      */
     public function download(int $itag)
     {
-        TubeDownloadStartEvent::dispatch(
-            $this->process()->uuid,
-        );
-
         $filename = Str::slug(self::$process->title ?? null);
 
         $dir = collect([

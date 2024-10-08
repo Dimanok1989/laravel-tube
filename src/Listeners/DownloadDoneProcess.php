@@ -47,7 +47,7 @@ class DownloadDoneProcess
             'status' => TubeProcess::STATUS_DONE
         ]);
 
-        if ($process->callback_url ?? null) {
+        if (($process->callback_url ?? null) && config('tube.slave')) {
             Http::baseUrl($process->callback_url)
                 ->withHeader('X-Sing', (new TubeService($process))->sing())
                 ->post(route('kolgaev.tube.webhook', $process->uuid, false), [
