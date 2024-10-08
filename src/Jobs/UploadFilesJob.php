@@ -52,6 +52,10 @@ class UploadFilesJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->process->update([
+            'status' => TubeProcess::STATUS_UPLOAD_FILES,
+        ]);
+
         try {
             $this->process->files()->each(function ($file) {
                 $this->uploadFile($file);
