@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Events\TubeDownloadProgressAudioEvent;
 use Kolgaev\Tube\Events\TubeDownloadProgressVideoEvent;
+use Kolgaev\Tube\Events\TubeFailEvent;
 use Kolgaev\Tube\Resources\StreamResource;
 use Kolgaev\Tube\TubeService;
 
@@ -245,7 +246,7 @@ class Youtube
 
         if (!file_exists("$path/$filename")) {
 
-            Process::timeout(3600)
+            $process = Process::timeout(3600)
                 ->run($command, function (string $type, string $output) use (&$tik, $event) {
 
                     if ($type != "out") {
@@ -253,7 +254,7 @@ class Youtube
                     }
 
                     if ($tik == 1) {
-                        
+
                         preg_match("/(\d+.\d+)%/", $output, $matches);
 
                         $percent = $matches[1] ?? null;
@@ -272,6 +273,19 @@ class Youtube
 
                     $tik++;
                 });
+
+            if ($process->failed()) {
+
+                $error = !empty($process->errorOutput())
+                    ? $process->errorOutput()
+                    : $process->output();
+                TubeFailEvent::dispatch(
+                    $this->service->process()->uuid ?? null,
+                    $error,
+                    TubeService::FAIL_DOWNLOAD_VIDEO_PROCESS
+                );
+                return;
+            }
         }
 
         $event::dispatch($this->service->process()->uuid ?? null, 100);

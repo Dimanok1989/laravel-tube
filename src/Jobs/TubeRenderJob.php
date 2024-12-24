@@ -14,6 +14,7 @@ use Kolgaev\Tube\Events\TubeDoneEvent;
 use Kolgaev\Tube\Events\TubeFailEvent;
 use Kolgaev\Tube\Events\TubeRenderStartEvent;
 use Kolgaev\Tube\Models\TubeProcess;
+use Kolgaev\Tube\TubeService;
 
 class TubeRenderJob implements ShouldQueue
 {
@@ -93,7 +94,11 @@ class TubeRenderJob implements ShouldQueue
                 Log::debug($command);
                 Log::debug("\n" . $result->errorOutput());
 
-                TubeFailEvent::dispatch($this->process->uuid, "Ошибка рендера видео");
+                TubeFailEvent::dispatch(
+                    $this->process->uuid,
+                    "Ошибка рендера видео",
+                    TubeService::FAIL_RENDER_VIDEO
+                );
                 return;
             }
         }

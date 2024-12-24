@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Kolgaev\Tube\Events\TubeDownloadProgressAudioEvent;
 use Kolgaev\Tube\Events\TubeDownloadProgressVideoEvent;
 use Kolgaev\Tube\Models\TubeProcess;
+use Kolgaev\Tube\Traits\HasDebug;
 use Kolgaev\Tube\TubeService;
 
 /**
@@ -15,6 +16,8 @@ use Kolgaev\Tube\TubeService;
  */
 class DownloadProgress
 {
+    use HasDebug;
+
     /**
      * Обработка события завершения скачивания
      * 
@@ -26,6 +29,12 @@ class DownloadProgress
     ): void {
 
         $process = TubeProcess::whereUuid($event->uuid)->first();
+
+        $this->toDubugLog([
+            'type' => $event::class,
+            'uuid' => $process->uuid ?? null,
+            'event' => get_object_vars($event),
+        ]);
 
         $status = match ($event::class) {
             TubeDownloadProgressVideoEvent::class => TubeProcess::STATUS_VIDEO_DOWNLOADED,

@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Kolgaev\Tube\Events\TubeDoneEvent;
 use Kolgaev\Tube\Events\TubeFailEvent;
 use Kolgaev\Tube\Models\TubeProcess;
+use Kolgaev\Tube\Traits\HasDebug;
 use Kolgaev\Tube\TubeService;
 
 /**
@@ -13,6 +14,8 @@ use Kolgaev\Tube\TubeService;
  */
 class DownloadDoneProcess
 {
+    use HasDebug;
+
     /**
      * Обработка события завершения скачивания
      * 
@@ -21,6 +24,12 @@ class DownloadDoneProcess
      */
     public function handle(TubeDoneEvent|TubeFailEvent $event): void
     {
+        $this->toDubugLog([
+            'type' => $event::class,
+            'uuid' => $event->uuid ?? null,
+            'event' => get_object_vars($event),
+        ]);
+
         if (!$process = TubeProcess::whereUuid($event->uuid)->first()) {
             return;
         }
@@ -70,6 +79,7 @@ class DownloadDoneProcess
             'data' => [
                 ...(is_array($process->data) ? $process->data : []),
                 'error' => $event->errorMessage ?? null,
+                'errorCode' => $event->errorCode ?? null,
             ]
         ]);
 

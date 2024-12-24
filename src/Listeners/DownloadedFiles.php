@@ -4,6 +4,7 @@ namespace Kolgaev\Tube\Listeners;
 
 use Illuminate\Support\Facades\Http;
 use Kolgaev\Tube\Models\TubeProcess;
+use Kolgaev\Tube\Traits\HasDebug;
 use Kolgaev\Tube\TubeService;
 
 /**
@@ -11,6 +12,8 @@ use Kolgaev\Tube\TubeService;
  */
 class DownloadedFiles
 {
+    use HasDebug;
+
     /**
      * Обработка события завершения скачивания
      * 
@@ -19,6 +22,12 @@ class DownloadedFiles
      */
     public function handle(object $event): void
     {
+        $this->toDubugLog([
+            'type' => $event::class,
+            'uuid' => $event->uuid ?? null,
+            'event' => get_object_vars($event),
+        ]);
+
         if (!$process = TubeProcess::whereUuid($event->uuid)->first()) {
             return;
         }

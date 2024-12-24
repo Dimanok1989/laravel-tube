@@ -50,7 +50,10 @@ class DownloadFilesJob implements ShouldQueue
         try {
             $service->startDownload();
         } catch (Exception $e) {
-            TubeFailEvent::dispatch($process->uuid, $e->getMessage());
+            TubeFailEvent::dispatch(
+                $process->uuid,
+                $e->getMessage()
+            );
         }
     }
 }

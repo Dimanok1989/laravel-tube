@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Enums\Tubes;
 use Kolgaev\Tube\Events\TubeDownloadedEvent;
-use Kolgaev\Tube\Events\TubeDownloadStartEvent;
+use Kolgaev\Tube\Events\TubeFailEvent;
 use Kolgaev\Tube\Exceptions\HandlerBad;
 use Kolgaev\Tube\Exceptions\HandlerNotExists;
 use Kolgaev\Tube\Exceptions\StreamNotFound;
@@ -18,6 +18,11 @@ use Kolgaev\Tube\Resources\MetaResource;
 
 class TubeService
 {
+    const FAIL_DOWNLOAD_VIDEO_PROCESS = 1;
+    const FAIL_DOWNLOAD_AUDIO_PROCESS = 2;
+    const FAIL_DOWNLOADED_NOT_EXISTS_FILES = 3;
+    const FAIL_RENDER_VIDEO = 4;
+
     /**
      * Ссылка на видео
      * 
@@ -248,6 +253,7 @@ class TubeService
      * Начало скачивание файлов
      * 
      * @param int $itag
+     * @return void
      */
     public function download(int $itag)
     {
@@ -263,7 +269,18 @@ class TubeService
 
         $this->setPermit($path);
 
-        $this->client()->download($path, $filename, $itag);
+        $files = $this->client()->download($path, $filename, $itag);
+
+        foreach ($files as $file) {
+            if (! file_exists($file)) {
+                TubeFailEvent::dispatch(
+                    $this->process()->uuid,
+                    'Не удалось скачать файл',
+                    self::FAIL_DOWNLOADED_NOT_EXISTS_FILES,
+                );
+                return;
+            }
+        }
 
         $this->process()->update([
             'status' => TubeProcess::STATUS_DOWNLOADED,

@@ -1,6 +1,7 @@
 {
     "name": "kolgaev/laravel-tube",
     "description": "Downloader video",
+    "version": "0.1.7",
     "type": "library",
     "license": "MIT",
     "require": {
