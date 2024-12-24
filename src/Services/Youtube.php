@@ -242,9 +242,9 @@ class Youtube
         string $event
     ) {
 
-        $tik = 1;
-
         if (!file_exists("$path/$filename")) {
+
+            $tik = 1;
 
             $process = Process::timeout(3600)
                 ->run($command, function (string $type, string $output) use (&$tik, $event) {
@@ -279,11 +279,17 @@ class Youtube
                 $error = !empty($process->errorOutput())
                     ? $process->errorOutput()
                     : $process->output();
+
+                if (!filesize("$path/$filename")) {
+                    unlink("$path/$filename");
+                }
+
                 TubeFailEvent::dispatch(
                     $this->service->process()->uuid ?? null,
                     $error,
                     TubeService::FAIL_DOWNLOAD_VIDEO_PROCESS
                 );
+
                 return;
             }
         }
