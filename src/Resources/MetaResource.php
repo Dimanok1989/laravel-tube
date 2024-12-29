@@ -2,98 +2,135 @@
 
 namespace Kolgaev\Tube\Resources;
 
+use App\Support\Collection;
 use Carbon\Carbon;
-use Illuminate\Http\Resources\DelegatesToResource;
+use Kolgaev\Tube\Exceptions\MetaInvalidFormatItemException;
 
 class MetaResource extends Resource
 {
-    use DelegatesToResource;
+    /**
+     * Идентификатор формата с лучшим качеством звука
+     * 
+     * @var string|null
+     */
+    public $audioId;
 
     /**
+     * Дата публикации видео
+     * 
+     * @var \Carbon\Carbon|null
+     */
+    public $publishDate;
+
+    /**
+     * Инициализация ресурса
+     * 
+     * @param string $id
+     * @param string $url
+     * @param string $title
+     * @param string $fulltitle
+     * @param string $description
+     * @param string $thumbnail
+     * @param string $channel
+     * @param string $channel_id
+     * @param string $channel_url
+     * @param string $uploader_id
+     * @param string $uploader_url
+     * @param string $upload_date
+     * @param string $timestamp
+     * @param string $extractor
+     * @param string $duration
+     * @param string $duration_string
+     * @param array $tags
+     * @param array $formats
+     * @return void
+     * 
+     * @throws \Kolgaev\Tube\Exceptions\MetaInvalidFormatItemException
+     */
+    public function __construct(
+        string $id,
+        string $url,
+        string $title,
+        string $fulltitle,
+        string $description,
+        string $thumbnail,
+        string $channel,
+        string $channel_id,
+        string $channel_url,
+        string $uploader_id,
+        string $uploader_url,
+        string $upload_date,
+        string $timestamp,
+        string $extractor,
+        string $duration,
+        string $duration_string,
+        array $tags,
+        array $formats,
+    ) {
+
+        foreach ($formats as $format) {
+            if (!is_a($format, MetaFormatResource::class)) {
+                throw new MetaInvalidFormatItemException("Элемент формата должен быть ресурсом \\" . MetaFormatResource::class);
+            }
+        }
+
+        parent::__construct(
+            new Collection(
+                compact(
+                    'id',
+                    'url',
+                    'title',
+                    'fulltitle',
+                    'description',
+                    'thumbnail',
+                    'channel',
+                    'channel_id',
+                    'channel_url',
+                    'uploader_id',
+                    'uploader_url',
+                    'upload_date',
+                    'timestamp',
+                    'extractor',
+                    'duration',
+                    'duration_string',
+                    'tags',
+                    'formats',
+                )
+            )
+        );
+
+        $audio = collect($formats)
+            ->filter(fn($item) => $item->acodec != "none")
+            ->filter(fn($item) => $item->vcodec == "none")
+            ->filter(fn($item) => $item->resolution == "audio only")
+            ->sortBy('abr')
+            ->reverse()
+            ->first();
+
+        if ($audio instanceof MetaFormatResource) {
+            $this->audioId = $audio->id;
+        }
+
+        try {
+            $this->publishDate = Carbon::createFromTimestampUTC($timestamp)
+                ->setTimezone(config('app.timezone'));
+        } catch (\Exception) {
+            //
+        }
+    }
+
+     /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
      */
-    public function toArray(): array
+    public function toArray()
     {
-        return is_array($this->resource)
-            ? $this->resource
-            : parent::toArray();
-    }
-
-    /**
-     * Получает идентификатор потока с видео в HD
-     * 
-     * @param int $resolution
-     * @return int|null
-     */
-    public function getItag(int $res = 1080, string $mime = "webm")
-    {
-        return collect($this->streams ?? $this->resource['streams'] ?? null)
-            ->filter(fn($item) => ($item->type ?? $item['type'] ?? null) == "video")
-            ->filter(fn($item) => strpos($item->res ?? $item['res'] ?? "", (string) $res) !== false)
-            ->filter(fn($item) => strpos($item->mime_type ?? $item['mime_type'] ?? "", $mime) !== false)
-            ->first()['itag'] ?? null;
-    }
-
-    /**
-     * Наименование видео
-     * 
-     * @return null|string
-     */
-    public function getTitle()
-    {
-        return $this->title ?? $this->resource['title'] ?? null;
-    }
-
-    /**
-     * Описание видео
-     * 
-     * @return null|string
-     */
-    public function getDescription()
-    {
-        return $this->description ?? $this->resource['description'] ?? null;
-    }
-
-    /**
-     * Описание видео
-     * 
-     * @return null|int
-     */
-    public function getLength()
-    {
-        return $this->length ?? $this->resource['length'] ?? null;
-    }
-
-    /**
-     * Описание видео
-     * 
-     * @return null|\Carbon\Carbon
-     */
-    public function getPublishDate()
-    {
-        $date = $this->publish_date ?? $this->resource['publish_date'] ?? null;
-
-        if ($date) {
-            try {
-                return Carbon::parse($date)->setTimezone(config('app.timezone', 'UTC'));
-            } catch (\Exception) {
-                //
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Данные с потоками доступных видео
-     * 
-     * @return 
-     */
-    public function streams()
-    {
-        return collect($this->streams ?? $this->resource['streams'] ?? null)
-            ->map(fn($item) => new StreamResource($item));
+        return [
+            ...$this->resource->toArray(),
+            'formats' => collect($this->resource->formats)
+                ->map(fn($item) => $item->toArray())
+                ->all()
+        ];
     }
 }

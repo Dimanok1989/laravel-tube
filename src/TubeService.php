@@ -2,185 +2,113 @@
 
 namespace Kolgaev\Tube;
 
-use Exception;
-use Illuminate\Support\Facades\Hash;
+use Closure;
+use Illuminate\Console\OutputStyle;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Kolgaev\Tube\Enums\Tubes;
-use Kolgaev\Tube\Events\TubeDownloadedEvent;
-use Kolgaev\Tube\Events\TubeFailEvent;
-use Kolgaev\Tube\Exceptions\HandlerBad;
-use Kolgaev\Tube\Exceptions\HandlerNotExists;
-use Kolgaev\Tube\Exceptions\StreamNotFound;
-use Kolgaev\Tube\Interfaces\HandlerInterface;
-use Kolgaev\Tube\Models\TubeProcess;
+use Kolgaev\Tube\Clients\Client;
+use Kolgaev\Tube\Enums\DownloadStatuses;
+use Kolgaev\Tube\Exceptions\ExtractorInvalidException;
+use Kolgaev\Tube\Extractors\Extractor;
+use Kolgaev\Tube\Models\Tube;
 use Kolgaev\Tube\Resources\MetaResource;
 
 class TubeService
 {
-    const FAIL_DOWNLOAD_VIDEO_PROCESS = 1;
-    const FAIL_DOWNLOAD_AUDIO_PROCESS = 2;
-    const FAIL_DOWNLOADED_NOT_EXISTS_FILES = 3;
-    const FAIL_RENDER_VIDEO = 4;
-
     /**
-     * Ссылка на видео
+     * Клиент загрузчика видео
      * 
-     * @var string
-     */
-    protected $url;
-
-    /**
-     * Файловое хранилище
-     * 
-     * @var \Illuminate\Filesystem\FilesystemAdapter
-     */
-    protected $storage;
-
-    /**
-     * Тип видеохостинга
-     * 
-     * @var \Kolgaev\Tube\Enums\Tubes
-     */
-    protected $tube;
-
-    /**
-     * Идентификатор видео
-     * 
-     * @var null|string
-     */
-    protected $tubeId;
-
-    /**
-     * Мета данные
-     * 
-     * @var null|\Kolgaev\Tube\Resources\MetaResource
-     */
-    protected $meta;
-
-    /**
-     * Модель процесса загрузки видео
-     * 
-     * @var \Kolgaev\Tube\Models\TubeProcess
-     */
-    public static $process;
-
-    /**
-     * Клиент видеохостинга
-     * 
-     * @var object
+     * @var \Kolgaev\Tube\Clients\Client
      */
     protected $client;
 
     /**
+     * Файловое хранилище
+     * 
+     * @var \Illuminate\Contracts\Filesystem\Filesystem
+     */
+    protected $storage;
+
+    /**
+     * Процесс загрузки
+     * 
+     * @var null|\Kolgaev\Tube\Models\Tube
+     */
+    public static $tube;
+
+    /**
      * Инициализация сервиса
      * 
-     * @param string|\Kolgaev\Tube\Models\TubeProcess $url
-     * @return void
+     * @param string $url
+     * @param null|\Illuminate\Console\OutputStyle $output
      */
-    public function __construct(string|TubeProcess $data)
-    {
-        $this->storage = Storage::disk('local');
+    public function __construct(
+        protected string $url,
+        protected ?OutputStyle $output = null
+    ) {
 
-        if (is_string($data)) {
-
-            $this->url = $data;
-
-            $this->parseUrl();
-
-            self::$process = TubeProcess::firstOrCreate([
-                'type' => $this->tube->name,
-                'tube_id' => $this->tubeId,
-            ], [
-                'uuid' => Str::orderedUuid()->toString(),
-                'status' => TubeProcess::STATUS_CREATED,
-                'callback_url' => $this->isHttp() ? config('app.url') : null,
-            ]);
-        } else if ($data instanceof TubeProcess) {
-
-            $this->url = $data->video_url;
-            $this->tube = $data->type;
-            $this->tubeId = $data->tube_id;
-
-            self::$process = $data;
-        }
-
-        if (!$this->storage->exists($this->tube->name)) {
-            $this->storage->makeDirectory($this->tube->name);
-            $this->setPermit($this->storage->path($this->tube->name));
-        }
+        $this->initStorage();
+        $this->client = (new Client($this))();
+        $this->initModel();
     }
 
     /**
-     * Парсинг ссылки и определение источника
+     * Инициализация файлового хранилища
+     * 
+     * @return static
+     */
+    private function initStorage()
+    {
+        $this->storage = Storage::disk(
+            $this->getDiskName()
+        );
+
+        $this->storage->makeDirectory('tube');
+
+        return $this;
+    }
+
+    /**
+     * Наименование файлового хранилища
      * 
      * @return string
-     * 
-     * @throws \Exception
      */
-    private function parseUrl(): string
+    public static function getDiskName()
     {
-        $parseUrl = parse_url($this->url);
-        $host = $parseUrl['host'] ?? "";
-
-        if ($host == "youtu.be") {
-            $this->tube = Tubes::youtube;
-            $tubeId = pathinfo($parseUrl['path'] ?? "", PATHINFO_BASENAME);
-        } else if (mb_strpos($host, "youtube.com") !== false) {
-            $this->tube = Tubes::youtube;
-            parse_str($parseUrl['query'] ?? "", $query);
-            $tubeId = $query['v'] ?? null;
-        }
-
-        if (empty($tubeId)) {
-            throw new \Exception("Не найден идентификатор видео");
-        }
-
-        return $this->tubeId = $tubeId;
+        return config('tube.disk', config('filesystems.default', 'local'));
     }
 
     /**
-     * Режим работы через внешний сервер
+     * Модель процесса загрузки
      * 
-     * @return bool
+     * @return \Kolgaev\Tube\Models\Tube
+     * @throws \Kolgaev\Tube\Exceptions\ExtractorInvalidException
      */
-    private function isHttp()
+    private function initModel()
     {
-        return config('tube.mode') == "http";
+        $extractor = Extractor::parse($this->url);
+
+        if (empty($extractor['name']) || empty($extractor['id'])) {
+            throw new ExtractorInvalidException("Экстрактор не определен");
+        }
+
+        return self::$tube = Tube::firstOrCreate([
+            'extractor' => $extractor['name'],
+            'display_id' => $extractor['id'],
+        ], [
+            'uuid' => Str::orderedUuid()->toString(),
+            'status' => DownloadStatuses::start_download,
+        ]);
     }
 
     /**
-     * Обработка процесса
+     * Запуск процесса
      * 
      * @return void
      */
     public function handle()
     {
-        $mode = config('tube.mode');
-        $handler = __NAMESPACE__ . "\\Handlers\\" . ucfirst($mode) . "Handler";
-
-        try {
-
-            if (!class_exists($handler)) {
-                throw new HandlerNotExists("Обработчик [$mode] не найден");
-            }
-
-            $handler = new $handler($this);
-
-            if (!is_a($handler, HandlerInterface::class)) {
-                throw new HandlerBad("Неизвестный обработчик [$mode]");
-            }
-
-            $handler->handle();
-        } catch (Exception $e) {
-            $this->process()->update([
-                'status' => TubeProcess::STATUS_FAIL,
-                'data' => [
-                    ...(is_array($this->process()->data) ? $this->process()->data : []),
-                    'error' => $e->getMessage(),
-                ],
-            ]);
-        }
+        //
     }
 
     /**
@@ -188,222 +116,58 @@ class TubeService
      * 
      * @return string
      */
-    public function url()
+    public function getUrl()
     {
         return $this->url;
     }
 
     /**
-     * Клиент видеохостинга
+     * Формирует путь до каталога с видео
      * 
-     * @return object
+     * @param string[] $path
+     * @return string
      */
-    private function client()
+    public function path(...$path)
     {
-        if ($this->client) {
-            return $this->client;
-        }
-
-        $client = $this->tube->client();
-
-        return $this->client = new $client($this);
+        return $this->storage->path(collect([
+            'tube',
+            ...$path
+        ])->filter()->join(DIRECTORY_SEPARATOR));
     }
 
     /**
-     * Выводит модель процесса загрузки
-     * 
-     * @return \Kolgaev\Tube\Models\TubeProcess
-     */
-    public function process()
-    {
-        return self::$process->refresh();
-    }
-
-    /**
-     * Выводит мета данные видео
+     * Получает мета данные видео
      * 
      * @return \Kolgaev\Tube\Resources\MetaResource
      */
-    public function meta()
+    public function getMeta(): MetaResource
     {
-        if ($this->meta) {
-            return $this->meta;
-        }
+        $meta = $this->client->getMeta();
 
-        if (!empty(self::$process->data['streams'])) {
-            return $this->meta = new MetaResource(self::$process->data);
-        }
-
-        $this->meta = new MetaResource(
-            $this->client()->getMeta()
-        );
-
-        self::$process->title = $this->meta->getTitle();
-        self::$process->description = $this->meta->getDescription();
-        self::$process->length = $this->meta->getLength();
-        self::$process->publish_date = $this->meta->getPublishDate();
-        self::$process->data = $this->meta->toArray();
-        self::$process->user_id = auth()->id();
-        self::$process->save();
-
-        return $this->meta;
-    }
-
-    /**
-     * Начало скачивание файлов
-     * 
-     * @param int $itag
-     * @return void
-     */
-    public function download(int $itag)
-    {
-        $filename = Str::slug(self::$process->title ?? null);
-
-        $dir = collect([
-            $this->tube->name,
-            $this->tubeId,
-        ])->join(DIRECTORY_SEPARATOR);
-
-        $this->storage->makeDirectory($dir);
-        $path = $this->storage->path($dir);
-
-        $this->setPermit($path);
-
-        $files = $this->client()->download($path, $filename, $itag);
-
-        foreach ($files as $file) {
-            if (! file_exists($file)) {
-                TubeFailEvent::dispatch(
-                    $this->process()->uuid,
-                    'Не удалось скачать файл',
-                    self::FAIL_DOWNLOADED_NOT_EXISTS_FILES,
-                );
-                return;
-            }
-        }
-
-        $this->process()->update([
-            'status' => TubeProcess::STATUS_DOWNLOADED,
+        self::$tube->update([
+            'title' => $meta->fulltitle,
+            'description' => $meta->description,
+            'duration' => $meta->duration,
+            'status' => DownloadStatuses::gets_metadata,
+            'thumbnail' => $meta->thumbnail,
+            'channel' => $meta->channel,
+            'publish_date' => $meta->publishDate,
+            'data' => $meta->toArray(),
         ]);
 
-        TubeDownloadedEvent::dispatch(
-            $this->process()->uuid,
-        );
+        return $meta;
     }
 
     /**
-     * Начинает скачивание видео в качестве HD и лучшим аудио
-     * В случае отсутствия видео в качестве HD, будет скачано видео с
-     * наилучшим каачеством
+     * Процесс загрузки видео
      * 
+     * @param string|int $video
+     * @param null|string|int $audio
+     * @param null|\Closure $callback
      * @return void
      */
-    public function startDownload()
+    public function download($video, $audio = null, ?Closure $callback = null)
     {
-        if (empty($stream = $this->getDonwnloadStream())) {
-            $stream = $this->meta()
-                ->streams()
-                ->filter(fn($stream) => $stream->type == "video")
-                ->sortBy('res', SORT_NATURAL)
-                ->last();
-        }
-
-        $itag = $stream['itag'] ?? null;
-
-        if (empty($stream['itag'])) {
-            throw new StreamNotFound("Данные о потоке видео не найдены");
-        }
-
-        $this->download($itag);
-    }
-
-    /**
-     * Находит предпочитаемый поток для скачивания видео
-     * 
-     * @return null|array
-     */
-    public function getDonwnloadStream()
-    {
-        return $this->meta()
-            ->streams()
-            ->filter(fn($stream) => $stream->type == "video")
-            ->filter(fn($item) => strpos((string) $item->res, "1080") !== false)
-            ->filter(fn($item) => strpos((string) $item->mime_type, "mp4") !== false)
-            ->first();
-    }
-
-    /**
-     * Формирование подписи для запроса
-     * 
-     * @return string
-     */
-    public function sing()
-    {
-        return Hash::make(
-            $this->singString()
-        );
-    }
-
-    /**
-     * Формирует строку для подписи
-     * 
-     * @return string
-     */
-    public function singString()
-    {
-        return collect([
-            self::$process->uuid,
-            $this->tube->value,
-            $this->tubeId,
-        ])->join("|");
-    }
-
-    /**
-     * Удаление файлов
-     * 
-     * @return array
-     */
-    public function delete()
-    {
-        foreach ($this->process()->files ?? [] as $file) {
-
-            if (!$this->storage->exists($file->path)) {
-                continue;
-            }
-
-            $this->storage->delete($file->path);
-
-            $files[] = $file->basename;
-        }
-
-        if (!empty($file)) {
-            $this->storage->deleteDirectory(
-                pathinfo($file->path, PATHINFO_DIRNAME)
-            );
-        }
-
-        return $files ?? [];
-    }
-
-    /**
-     * Устаналиваает права на файл
-     * 
-     * @param string $path
-     * @return void
-     */
-    public static function setPermit(string $path)
-    {
-        try {
-            chown($path, env('TUBE_OWNER_USER', 'www-data'));
-            chgrp($path, env('TUBE_OWNER_GROUP', 'www-data'));
-        } catch (Exception) {
-            //
-        }
-
-        try {
-            chmod($path, 0755);
-        } catch (Exception) {
-            //
-        }
+        $this->client->download($video, $audio, $callback);
     }
 }
