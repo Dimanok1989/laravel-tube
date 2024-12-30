@@ -3,6 +3,7 @@
 namespace Kolgaev\Tube\Console;
 
 use Illuminate\Console\Command;
+use Kolgaev\Tube\Events\TubeDownloadDoneEvent;
 use Kolgaev\Tube\Resources\DownloadOutputResource;
 use Kolgaev\Tube\Resources\MetaFormatResource;
 use Kolgaev\Tube\TubeService;
@@ -58,8 +59,10 @@ class DownloadCommand extends Command
         }
 
         $service->download($formatId, $meta->audioId, function (DownloadOutputResource $output) {
-            $this->write($output->output);
+            $this->line(trim($output->output));
         });
+
+        TubeDownloadDoneEvent::dispatch($service::$tube);
     }
 
     /**
@@ -70,7 +73,11 @@ class DownloadCommand extends Command
      */
     private function stremName(MetaFormatResource $item)
     {
-        return "{$item->format} {$item->ext}"
-            . (($item->acodec != "none") ? " + audio" : "");
+        $format = MetaFormatResource::getFormatNote($item);
+
+        return "{$format} {$item->ext}"
+            . (($item->acodec != "none") ? " + audio" : "")
+            . " {$item->vcodec} "
+            . $item->sizeFormat();
     }
 }

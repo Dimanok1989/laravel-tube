@@ -5,24 +5,23 @@ namespace Kolgaev\Tube\Events;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Kolgaev\Tube\Traits\HasDebug;
+use Kolgaev\Tube\Models\Tube;
 
-class TubeDoneEvent
+class TubeDownloadFileErrorEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels, HasDebug;
+    use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
      * Create a new event instance.
      * 
-     * @param null|string $uuid
-     * @param null|string $path
+     * @param \Kolgaev\Tube\Models\Tube $tube
+     * @param null|string $message
      * @return void
      */
     public function __construct(
-        public ?string $uuid,
-        public ?string $path
+        public Tube $tube,
+        public ?string $message
     ) {
-
-        $this->toDubugLog();
+        //
     }
 }

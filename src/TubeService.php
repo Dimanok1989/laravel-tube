@@ -8,9 +8,17 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Clients\Client;
 use Kolgaev\Tube\Enums\DownloadStatuses;
+use Kolgaev\Tube\Events\TubeDownloadedFileEvent;
+use Kolgaev\Tube\Events\TubeDownloadedFileProgressEvent;
+use Kolgaev\Tube\Events\TubeDownloadFileErrorEvent;
+use Kolgaev\Tube\Events\TubeDownloadFileEvent;
+use Kolgaev\Tube\Events\TubeInitDownloadEvent;
+use Kolgaev\Tube\Events\TubeReceivedMetaEvent;
 use Kolgaev\Tube\Exceptions\ExtractorInvalidException;
 use Kolgaev\Tube\Extractors\Extractor;
 use Kolgaev\Tube\Models\Tube;
+use Kolgaev\Tube\Resources\DownloadOutputResource;
+use Kolgaev\Tube\Resources\MetaFormatResource;
 use Kolgaev\Tube\Resources\MetaResource;
 
 class TubeService
@@ -32,9 +40,16 @@ class TubeService
     /**
      * Процесс загрузки
      * 
-     * @var null|\Kolgaev\Tube\Models\Tube
+     * @var \Kolgaev\Tube\Models\Tube
      */
     public static $tube;
+
+    /**
+     * Мета данные
+     * 
+     * @var null|\Kolgaev\Tube\Resources\MetaResource
+     */
+    public $meta;
 
     /**
      * Инициализация сервиса
@@ -69,13 +84,23 @@ class TubeService
     }
 
     /**
+     * Файловое хранилище
+     * 
+     * @return \Illuminate\Contracts\Filesystem\Filesystem
+     */
+    public function storage()
+    {
+        return $this->storage;
+    }
+
+    /**
      * Наименование файлового хранилища
      * 
      * @return string
      */
     public static function getDiskName()
     {
-        return config('tube.disk', config('filesystems.default', 'local'));
+        return config('tube.disk', config('filesystems.default', 'local')) ?: 'local';
     }
 
     /**
@@ -92,13 +117,27 @@ class TubeService
             throw new ExtractorInvalidException("Экстрактор не определен");
         }
 
-        return self::$tube = Tube::firstOrCreate([
+        self::$tube = Tube::firstOrCreate([
             'extractor' => $extractor['name'],
             'display_id' => $extractor['id'],
         ], [
             'uuid' => Str::orderedUuid()->toString(),
-            'status' => DownloadStatuses::start_download,
+            'status' => DownloadStatuses::init_download,
         ]);
+
+        TubeInitDownloadEvent::dispatch(self::$tube);
+
+        return self::$tube;
+    }
+
+    /**
+     * Возвращает модель процесса загрузки
+     * 
+     * @return null|\Kolgaev\Tube\Models\Tube
+     */
+    public static function getTube()
+    {
+        return self::$tube;
     }
 
     /**
@@ -144,18 +183,9 @@ class TubeService
     {
         $meta = $this->client->getMeta();
 
-        self::$tube->update([
-            'title' => $meta->fulltitle,
-            'description' => $meta->description,
-            'duration' => $meta->duration,
-            'status' => DownloadStatuses::gets_metadata,
-            'thumbnail' => $meta->thumbnail,
-            'channel' => $meta->channel,
-            'publish_date' => $meta->publishDate,
-            'data' => $meta->toArray(),
-        ]);
+        TubeReceivedMetaEvent::dispatch(self::$tube, $meta);
 
-        return $meta;
+        return $this->meta = $meta;
     }
 
     /**
@@ -168,6 +198,24 @@ class TubeService
      */
     public function download($video, $audio = null, ?Closure $callback = null)
     {
-        $this->client->download($video, $audio, $callback);
+        TubeDownloadFileEvent::dispatch(self::$tube, $video, $audio);
+
+        $cb = function (DownloadOutputResource $output) use ($callback) {
+            if (is_numeric($output->percent)) {
+                TubeDownloadedFileProgressEvent::dispatch(self::$tube, $output);
+            }
+            if ($callback instanceof Closure) {
+                $callback($output);
+            }
+        };
+
+        try {
+            $path = $this->client->download($video, $audio, $cb);
+            TubeDownloadedFileEvent::dispatch(self::$tube, $path, $this->meta, $video, $audio);
+        } catch (\Exception $e) {
+            TubeDownloadFileErrorEvent::dispatch(self::$tube, $e->getMessage());
+        }
+
+        return $path ?? null;
     }
 }

@@ -18,6 +18,7 @@ return new class extends Migration
                 ->comment('Идентификатор процесса')
                 ->constrained()
                 ->nullOnDelete();
+            $table->string('format_id')->nullable()->comment('Идентификатор формата');
             $table->string('disk')->nullable()->comment('Наименование файлогового хранилища');
             $table->string('path')->nullable()->comment('Путь до каталога с файлом');
             $table->string('filename')->nullable()->comment('Имя файла');
@@ -26,6 +27,7 @@ return new class extends Migration
             $table->unsignedBigInteger('filesize')->nullable()->comment('Размер файла');
             $table->string('format')->nullable()->comment('Наименование качества видео');
             $table->string('resolution')->nullable()->comment('Разрешение видео');
+            $table->float('fps')->nullable()->comment('Количество кадров');
             $table->string('vcodec')->nullable()->comment('Кодек видео');
             $table->string('acodec')->nullable()->comment('Кодек аудио');
             $table->timestamps();

@@ -2,8 +2,6 @@
 
 namespace Kolgaev\Tube\Resources;
 
-use Carbon\Carbon;
-use Illuminate\Http\Resources\DelegatesToResource;
 use Kolgaev\Tube\Support\Collection;
 
 class MetaFormatResource extends Resource
@@ -12,22 +10,22 @@ class MetaFormatResource extends Resource
      * Создание ресурса
      */
     public function __construct(
-        string $id,
-        string $ext,
-        string $resolution,
-        ?int $width,
-        ?int $height,
-        ?int $fps,
-        ?int $audio_channels,
-        ?int $filesize,
-        ?float $tbr,
-        ?string $vcodec,
-        ?float $vbr,
-        ?string $acodec,
-        ?float $abr,
-        ?int $asr,
-        ?string $format,
-        ?string $format_note
+        public string $id,
+        public string $ext,
+        public string $resolution,
+        public ?int $width,
+        public ?int $height,
+        public ?int $fps,
+        public ?int $audio_channels,
+        public ?int $filesize,
+        public ?float $tbr,
+        public ?string $vcodec,
+        public ?float $vbr,
+        public ?string $acodec,
+        public ?float $abr,
+        public ?int $asr,
+        public ?string $format,
+        public ?string $format_note
     ) {
         parent::__construct(
             new Collection(
@@ -54,12 +52,37 @@ class MetaFormatResource extends Resource
     }
 
     /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
+     * Преобразует размер файла в читаемый формат
+     * 
+     * @param int $precision
+     * @return null|string
      */
-    public function toArray(): array
+    public function sizeFormat($precision = 2)
     {
-        return parent::toArray();
+        if (!$this->filesize) {
+            return null;
+        }
+
+        $bytes = $this->filesize;
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $factor = floor((strlen($bytes) - 1) / 3);
+        return trim(round($bytes / pow(1024, $factor), $precision) . " " . ($units[$factor] ?? ""));
+    }
+
+    /**
+     * Выводит наименование формата
+     * 
+     * @param \Kolgaev\Tube\Resources\MetaFormatResource $item
+     * @return string
+     */
+    public static function getFormatNote(MetaFormatResource $item)
+    {
+        $format = $item->format_note;
+
+        if (empty($format) && !empty($item->get('height'))) {
+            $format = (string)$item->height . "p" . (string)$item->fps;
+        }
+
+        return $format ?: $item->resolution;
     }
 }

@@ -49,4 +49,14 @@ class Tube extends Model
     {
         return $this->hasMany(TubeVideo::class);
     }
+
+    /**
+     * Логи процесса загрузки
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function logs()
+    {
+        return $this->hasMany(TubeLog::class);
+    }
 }

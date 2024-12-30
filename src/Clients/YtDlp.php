@@ -4,7 +4,6 @@ namespace Kolgaev\Tube\Clients;
 
 use App\Support\Arr;
 use Closure;
-use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -78,35 +77,6 @@ class YtDlp implements ClientIterface
     }
 
     /**
-     * Определение идентификатора и источника видео
-     * 
-     * @return null|string
-     */
-    public function getExtractor()
-    {
-        $command = collect([
-            $this->ytdlp(),
-            "--get-filename",
-            " -o '%(extractor)s/%(display_id)s'",
-            $this->url
-        ])->filter()->join(" ");
-
-        $process = Process::run($command);
-
-        $path = collect(explode("\n", trim($process->output())))
-            ->map(fn($item) => trim($item))
-            ->reverse()
-            ->first();
-
-        $parts = explode("/", (string)$path);
-
-        return [
-            'extractor' => $parts[0] ?? null,
-            'id' => $parts[1] ?? null,
-        ];
-    }
-
-    /**
      * Получение мета данных
      * 
      * @return array
@@ -151,16 +121,66 @@ class YtDlp implements ClientIterface
     }
 
     /**
+     * Получает наименование формата видео
+     * 
+     * @param int|string $formatId
+     * @return null|string
+     */
+    private function findVideoFormatName($formatId)
+    {
+        if (!$format = collect($this->meta->formats)->firstWhere('id', $formatId)) {
+            return null;
+        }
+
+        return MetaFormatResource::getFormatNote($format);
+    }
+
+    /**
+     * Получает имя файла по шаблону
+     * 
+     * @param string $format
+     * @param string $path
+     * @return string
+     */
+    private function getFilename($format, $path)
+    {
+        $command = collect([
+            $this->ytdlp(),
+            "-f $format",
+            "--get-filename",
+            "-o '$path'",
+            $this->url
+        ])->filter()->join(" ");
+
+        return trim(Process::run($command)->output());
+    }
+
+    /**
      * Процесс загрузки видео
      * 
      * @param string|int $video
      * @param null|string|int $audio
      * @param null|\Closure $callback
+     * @return array
      */
     public function download($video, $audio = null, ?Closure $callback = null)
     {
         $format = $video . (!empty($audio) ? "+{$audio}" : "");
-        $path = $this->service->path($this->meta->extractor, $this->meta->id, "%(title)s.%(ext)s");
+        $formatNote = $this->findVideoFormatName($video) ?: "%(height)s";
+
+        $dir = $path = $this->service->path($this->meta->extractor, $this->meta->id);
+    
+        $basename = Str::slug($this->meta->title) . ".[%(vcodec)s].{$formatNote}.%(ext)s";
+        $path = "$dir/$basename";
+
+        $thumbnail = $dir . "/thumbnail.%(ext)s";
+        $thubnailExists = false;
+        foreach (scandir($dir) as $file) {
+            if (strpos($file, "thumbnail.") !== false) {
+                $thubnailExists = true;
+                break;
+            }
+        }
 
         $command = collect([
             $this->ytdlp(),
@@ -169,14 +189,16 @@ class YtDlp implements ClientIterface
             "-4",
             "--fragment-retries 150",
             "-o '$path'",
-            "--write-thumbnail",
+            $thubnailExists ? null : "--write-thumbnail",
+            $thubnailExists ? null : "-o 'thumbnail:$thumbnail'",
             $this->url
         ])->filter()->join(" ");
 
         $count = 0;
+        $start = microtime(true);
 
         $process = Process::timeout(3600)
-            ->run($command, function (string $type, string $output) use ($callback, &$count) {
+            ->run($command, function (string $type, string $output) use ($callback, &$count, &$start) {
 
                 if ($type != "out" || !($callback instanceof Closure)) {
                     return;
@@ -185,24 +207,35 @@ class YtDlp implements ClientIterface
                 $pattern = '/(\d+\.\d+)% of\s+([\d.]+[G|M]iB)\s+at\s+([\d.]+[K|M]iB\/s)\s+ETA\s+([\d:]+)/';
                 preg_match_all($pattern, Str::squish($output), $matches, PREG_SET_ORDER);
 
-                $percent = !empty($matches[1]) ? (float) $matches[1] : null;
-
-                try {
-                    $callback(new DownloadOutputResource(
-                        $output,
-                        $count,
-                        $percent,
-                        $matches[2] ?? null,
-                        $matches[3] ?? null,
-                        $matches[4] ?? null,
-                    ));
-                } catch (Exception) {
-                    //
+                if (Str::position($output, "Destination:") !== false) {
+                    $count++;
                 }
+
+                $percent = !empty($matches[0][1]) ? (float) $matches[0][1] : null;
+
+                if ((microtime(true) - $start) < 1 && $percent < 100) {
+                    return;
+                }
+
+                $start = microtime(true);
+
+                $callback(new DownloadOutputResource(
+                    $output,
+                    $count,
+                    $percent,
+                    $matches[0][2] ?? null,
+                    $matches[0][3] ?? null,
+                    $matches[0][4] ?? null,
+                ));
             });
 
         if ($process->failed()) {
-            throw new Exception($process->errorOutput());
+            throw new DownloadFileErrorException($process->errorOutput());
         }
+
+        return [
+            'format' => $formatNote,
+            'path' => "tube/{$this->meta->extractor}/{$this->meta->id}/" . $this->getFilename($format, $basename),
+        ];
     }
 }

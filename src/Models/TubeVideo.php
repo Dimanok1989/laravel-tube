@@ -16,7 +16,8 @@ class TubeVideo extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'tube_download_id',
+        'tube_id',
+        'format_id',
         'disk',
         'path',
         'filename',
@@ -25,6 +26,7 @@ class TubeVideo extends Model
         'format',
         'resolution',
         'filesize',
+        'fps',
         'vcodec',
         'acodec',
     ];
