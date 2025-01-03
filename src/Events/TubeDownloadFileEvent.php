@@ -14,6 +14,9 @@ class TubeDownloadFileEvent
     /**
      * Create a new event instance.
      * 
+     * @param \Kolgaev\Tube\Models\Tube $tube
+     * @param null|string|int $video
+     * @param null|string|int $audio
      * @return void
      */
     public function __construct(

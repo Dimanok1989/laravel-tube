@@ -104,17 +104,6 @@ class YtDlp implements ClientIterface
             $resource[$case->name] = Arr::get($data, $case->value);
         }
 
-        $resource['formats'] = collect($data['formats'] ?? [])
-            ->map(function ($item) {
-
-                foreach (MetaFormatKeys::cases() as $case) {
-                    $format[$case->name] = Arr::get($item, $case->value);
-                }
-
-                return new MetaFormatResource(...($format ?? []));
-            })
-            ->all();
-
         $this->meta = new MetaResource(...$resource);
 
         return $this->meta;
@@ -169,16 +158,19 @@ class YtDlp implements ClientIterface
         $formatNote = $this->findVideoFormatName($video) ?: "%(height)s";
 
         $dir = $path = $this->service->path($this->meta->extractor, $this->meta->id);
-    
+
         $basename = Str::slug($this->meta->title) . ".[%(vcodec)s].{$formatNote}.%(ext)s";
         $path = "$dir/$basename";
 
         $thumbnail = $dir . "/thumbnail.%(ext)s";
         $thubnailExists = false;
-        foreach (scandir($dir) as $file) {
-            if (strpos($file, "thumbnail.") !== false) {
-                $thubnailExists = true;
-                break;
+
+        if (file_exists($dir)) {
+            foreach (scandir($dir) as $file) {
+                if (strpos($file, "thumbnail.") !== false) {
+                    $thubnailExists = true;
+                    break;
+                }
             }
         }
 
@@ -213,7 +205,7 @@ class YtDlp implements ClientIterface
 
                 $percent = !empty($matches[0][1]) ? (float) $matches[0][1] : null;
 
-                if ((microtime(true) - $start) < 1 && $percent < 100) {
+                if ((microtime(true) - $start) < 1 && $percent < 100 && is_numeric($percent)) {
                     return;
                 }
 

@@ -11,4 +11,5 @@ enum DownloadStatuses: int
     case download_file_error = 5;
     case downloaded_file = 6;
     case download_done = 7;
+    case download_fail = 8;
 }

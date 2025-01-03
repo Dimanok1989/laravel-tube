@@ -5,6 +5,7 @@ namespace Kolgaev\Tube\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Kolgaev\Tube\Enums\DownloadStatuses;
+use Kolgaev\Tube\Enums\TubeTypes;
 
 class Tube extends Model
 {
@@ -58,5 +59,15 @@ class Tube extends Model
     public function logs()
     {
         return $this->hasMany(TubeLog::class);
+    }
+
+    /**
+     * Ссылка на источник с видео
+     * 
+     * @return null|string
+     */
+    public function getUrlAttribute()
+    {
+        return optional(TubeTypes::tryFrom($this->extractor))->url($this->display_id);
     }
 }

@@ -20,6 +20,7 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->unsignedInteger('status')->nullable()->comment('Статус загрузки');
             $table->text('message')->nullable()->comment('Текст сообщения');
+            $table->jsonb('data')->nullable()->comment('Дополнительные данные');
             $table->timestamps();
         });
     }

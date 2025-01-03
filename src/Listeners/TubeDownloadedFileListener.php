@@ -32,7 +32,7 @@ class TubeDownloadedFileListener
         $disk = TubeService::getDiskName();
         $storage = Storage::disk($disk);
 
-        $event->tube->videos()->updateOrCreate([
+        $video = $event->tube->videos()->updateOrCreate([
             'format_id' => $event->video,
             'filename' => $filename,
             'extension' => $extension,
@@ -50,7 +50,12 @@ class TubeDownloadedFileListener
 
         $event->tube->logs()->create([
             'status' => DownloadStatuses::downloaded_file,
-            'message' => "[{$event->video}] PATH:" . $event->path['path'],
+            'data' => [
+                'videoId' => $video->id,
+                'path' => $event->path['path'] ?? null,
+                'video' => $event->video,
+                'audio' => $event->audio,
+            ],
         ]);
     }
 }

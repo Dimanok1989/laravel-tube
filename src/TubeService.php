@@ -4,10 +4,12 @@ namespace Kolgaev\Tube;
 
 use Closure;
 use Illuminate\Console\OutputStyle;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Kolgaev\Tube\Clients\Client;
 use Kolgaev\Tube\Enums\DownloadStatuses;
+use Kolgaev\Tube\Events\TubeDownloadDoneEvent;
 use Kolgaev\Tube\Events\TubeDownloadedFileEvent;
 use Kolgaev\Tube\Events\TubeDownloadedFileProgressEvent;
 use Kolgaev\Tube\Events\TubeDownloadFileErrorEvent;
@@ -18,7 +20,6 @@ use Kolgaev\Tube\Exceptions\ExtractorInvalidException;
 use Kolgaev\Tube\Extractors\Extractor;
 use Kolgaev\Tube\Models\Tube;
 use Kolgaev\Tube\Resources\DownloadOutputResource;
-use Kolgaev\Tube\Resources\MetaFormatResource;
 use Kolgaev\Tube\Resources\MetaResource;
 
 class TubeService
@@ -45,6 +46,13 @@ class TubeService
     public static $tube;
 
     /**
+     * Ссылка на видео
+     * 
+     * @var string
+     */
+    protected $url;
+
+    /**
      * Мета данные
      * 
      * @var null|\Kolgaev\Tube\Resources\MetaResource
@@ -54,17 +62,23 @@ class TubeService
     /**
      * Инициализация сервиса
      * 
-     * @param string $url
+     * @param \Kolgaev\Tube\Models\Tube|string $url
      * @param null|\Illuminate\Console\OutputStyle $output
      */
     public function __construct(
-        protected string $url,
+        Tube|string $tube,
         protected ?OutputStyle $output = null
     ) {
 
+        if (is_string($tube) && filter_var($tube, FILTER_VALIDATE_URL)) {
+            $this->url = $tube;
+        } else if ($tube instanceof Tube) {
+            $this->url = $tube->url;
+        }
+
         $this->initStorage();
         $this->client = (new Client($this))();
-        $this->initModel();
+        $this->initModel($tube);
     }
 
     /**
@@ -106,11 +120,17 @@ class TubeService
     /**
      * Модель процесса загрузки
      * 
+     * @param \Kolgaev\Tube\Models\Tube|string $tube
      * @return \Kolgaev\Tube\Models\Tube
+     * 
      * @throws \Kolgaev\Tube\Exceptions\ExtractorInvalidException
      */
-    private function initModel()
+    private function initModel(Tube|string $tube)
     {
+        if ($tube instanceof Tube) {
+            return self::$tube = $tube;
+        }
+
         $extractor = Extractor::parse($this->url);
 
         if (empty($extractor['name']) || empty($extractor['id'])) {
@@ -147,7 +167,22 @@ class TubeService
      */
     public function handle()
     {
-        //
+        $meta = $this->getMeta();
+
+        foreach ($meta->formats() as $video) {
+
+            if (self::$tube->videos->firstWhere('format', "{$video}p")) {
+                continue;
+            }
+
+            $this->download($video, $meta->audioId, function ($output) {
+                if (env('TUBE_DEBUG')) {
+                    $this->log()->debug($output);
+                }
+            });
+        }
+
+        TubeDownloadDoneEvent::dispatch(self::$tube->refresh());
     }
 
     /**
@@ -157,7 +192,7 @@ class TubeService
      */
     public function getUrl()
     {
-        return $this->url;
+        return $this->url ?? self::$tube->url ?? null;
     }
 
     /**
@@ -200,9 +235,9 @@ class TubeService
     {
         TubeDownloadFileEvent::dispatch(self::$tube, $video, $audio);
 
-        $cb = function (DownloadOutputResource $output) use ($callback) {
+        $cb = function (DownloadOutputResource $output) use ($callback, $video, $audio) {
             if (is_numeric($output->percent)) {
-                TubeDownloadedFileProgressEvent::dispatch(self::$tube, $output);
+                TubeDownloadedFileProgressEvent::dispatch(self::$tube, $output, $this->meta, $video, $audio);
             }
             if ($callback instanceof Closure) {
                 $callback($output);
@@ -213,9 +248,23 @@ class TubeService
             $path = $this->client->download($video, $audio, $cb);
             TubeDownloadedFileEvent::dispatch(self::$tube, $path, $this->meta, $video, $audio);
         } catch (\Exception $e) {
-            TubeDownloadFileErrorEvent::dispatch(self::$tube, $e->getMessage());
+            TubeDownloadFileErrorEvent::dispatch(self::$tube, $e->getMessage(), $video, $audio);
         }
 
         return $path ?? null;
+    }
+
+    /**
+     * Канал логирования
+     * 
+     * @return \Psr\Log\LoggerInterface
+     */
+    public function log()
+    {
+        return Log::build([
+            'driver' => 'daily',
+            'path' => storage_path('logs/kolgaev/tube.log'),
+            'days' => 14,
+        ]);
     }
 }

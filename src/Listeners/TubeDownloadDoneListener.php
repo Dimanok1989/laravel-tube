@@ -15,6 +15,10 @@ class TubeDownloadDoneListener
      */
     public function handle(TubeDownloadDoneEvent $event): void
     {
+        $event->tube->update([
+            'status' => DownloadStatuses::download_done,
+        ]);
+
         $event->tube->logs()->create([
             'status' => DownloadStatuses::download_done,
         ]);

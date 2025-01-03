@@ -14,4 +14,9 @@ class DownloadOutputResource
     ) {
         //
     }
+
+    public function __toString()
+    {
+        return trim($this->output);
+    }
 }

@@ -15,7 +15,7 @@ class MetaFormatResource extends Resource
         public string $resolution,
         public ?int $width,
         public ?int $height,
-        public ?int $fps,
+        public ?float $fps,
         public ?int $audio_channels,
         public ?int $filesize,
         public ?float $tbr,

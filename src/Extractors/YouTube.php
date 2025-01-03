@@ -4,7 +4,7 @@ namespace Kolgaev\Tube\Extractors;
 
 use Kolgaev\Tube\Interfaces\ExtractorInterface;
 
-class Youtube extends Extractor implements ExtractorInterface
+class YouTube extends Extractor implements ExtractorInterface
 {
     const EXTRACTOR = 'youtube';
 

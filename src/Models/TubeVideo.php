@@ -36,9 +36,9 @@ class TubeVideo extends Model
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-    public function download()
+    public function tube()
     {
-        return $this->belongsTo(Tube::class, 'tube_download_id');
+        return $this->belongsTo(Tube::class, 'tube_id');
     }
 
     /**
@@ -55,26 +55,12 @@ class TubeVideo extends Model
     }
 
     /**
-     * Путь до файла
-     * 
-     * @return string
-     */
-    public function getPathAttribute()
-    {
-        return collect([
-            $this->process->type->value ?? null,
-            $this->process->tube_id ?? null,
-            $this->basename,
-        ])->filter()->join(DIRECTORY_SEPARATOR);
-    }
-
-    /**
      * Относительный путь до файла
      * 
      * @return string
      */
     public function getFullPathAttribute()
     {
-        return Storage::disk('local')->path($this->path);
+        return Storage::disk($this->disk)->path($this->path . "/" . $this->basename);
     }
 }

@@ -16,11 +16,15 @@ class TubeDownloadFileErrorEvent
      * 
      * @param \Kolgaev\Tube\Models\Tube $tube
      * @param null|string $message
+     * @param null|string|int $video
+     * @param null|string|int $audio
      * @return void
      */
     public function __construct(
         public Tube $tube,
-        public ?string $message
+        public ?string $message,
+        public $video,
+        public $audio
     ) {
         //
     }

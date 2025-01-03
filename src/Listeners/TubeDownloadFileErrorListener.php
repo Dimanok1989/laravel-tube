@@ -22,6 +22,10 @@ class TubeDownloadFileErrorListener
         $event->tube->logs()->create([
             'status' => DownloadStatuses::download_file_error,
             'message' => $event->message,
+            'data' => [
+                'video' => $event->video,
+                'audio' => $event->audio,
+            ],
         ]);
     }
 }

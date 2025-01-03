@@ -21,7 +21,10 @@ class TubeDownloadFileListener
 
         $event->tube->logs()->create([
             'status' => DownloadStatuses::download_file,
-            'message' => "[{$event->video}]"
+            'data' => [
+                'video' => $event->video,
+                'audio' => $event->audio,
+            ],
         ]);
     }
 }

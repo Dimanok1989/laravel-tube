@@ -16,6 +16,7 @@ class TubeLog extends Model
         'tube_id',
         'status',
         'message',
+        'data',
     ];
 
     /**
@@ -25,6 +26,7 @@ class TubeLog extends Model
      */
     protected $casts = [
         'status' => DownloadStatuses::class,
+        'data' => "array",
     ];
 
     /**
