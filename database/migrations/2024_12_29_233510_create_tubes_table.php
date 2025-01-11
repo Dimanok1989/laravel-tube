@@ -23,9 +23,10 @@ return new class extends Migration
             $table->string('thumbnail')->nullable()->comment('Ссылка или путь до файла обложки');
             $table->string('channel')->nullable()->comment('Наименование канала');
             $table->timestamp('publish_date')->nullable()->comment('Дата публикации');
+            $table->jsonb('data')->nullable()->comment('Дополнительные данные');
+            $table->string('disk')->nullable()->comment('Идентификатор хранилища');
             $table->timestamps();
             $table->softDeletes();
-            $table->jsonb('data')->nullable()->comment('Дополнительные данные');
         });
     }
 

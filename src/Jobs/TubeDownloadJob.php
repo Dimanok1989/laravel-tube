@@ -59,8 +59,8 @@ class TubeDownloadJob implements ShouldQueue, ShouldBeUnique, ShouldBeEncrypted
         (new TubeService($tube))->handle();
     }
 
-    public function failed(Exception $e)
+    public function failed($e)
     {
-        Log::error('Job failed: ' . $e->getMessage());
+        \Log::error($e);
     }
 }

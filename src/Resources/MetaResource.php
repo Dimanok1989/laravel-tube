@@ -116,6 +116,7 @@ class MetaResource extends Resource
             ->filter(fn($item) => $item->acodec != "none")
             ->filter(fn($item) => $item->vcodec == "none")
             ->filter(fn($item) => $item->resolution == "audio only")
+            ->filter(fn($item) => $item->ext == "m4a")
             ->sortBy('abr')
             ->reverse()
             ->first();
@@ -157,6 +158,7 @@ class MetaResource extends Resource
     {
         return collect($this->formats)
             ->filter(fn($item) => $item->vcodec != "none")
+            ->filter(fn($item) => in_array($item->ext, ['mp4']))
             ->filter(
                 fn($item) => $item->height == $height
                     || strpos((string)$item->format_note, "{$height}p") !== false

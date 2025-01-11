@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Kolgaev\Tube\Enums\DownloadStatuses;
 use Kolgaev\Tube\Enums\TubeTypes;
+use Kolgaev\Tube\TubeService;
 
 class Tube extends Model
 {
@@ -28,6 +29,7 @@ class Tube extends Model
         'channel',
         'publish_date',
         'data',
+        'disk',
     ];
 
     /**
@@ -40,6 +42,20 @@ class Tube extends Model
         'publish_date' => "datetime",
         'data' => "array",
     ];
+
+    /**
+     * Bootstrap the model and its traits.
+     *
+     * @return void
+     */
+    public static function boot()
+    {
+        parent::boot();
+
+        static::created(function (self $tube) {
+            $tube->disk = $tube->disk ?: TubeService::getDiskName();
+        });
+    }
 
     /**
      * Файлы, принадлежащие процессу загрущки
