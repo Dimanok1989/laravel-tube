@@ -52,7 +52,7 @@ class Tube extends Model
     {
         parent::boot();
 
-        static::created(function (self $tube) {
+        static::creating(function (self $tube) {
             $tube->disk = $tube->disk ?: TubeService::getDiskName();
         });
     }
