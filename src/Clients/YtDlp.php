@@ -199,6 +199,11 @@ class YtDlp implements ClientIterface
                 $pattern = '/(\d+\.\d+)% of\s+([\d.]+[G|M]iB)\s+at\s+([\d.]+[K|M]iB\/s)\s+ETA\s+([\d:]+)/';
                 preg_match_all($pattern, Str::squish($output), $matches, PREG_SET_ORDER);
 
+                if (empty($matches)) {
+                    $pattern = '/(\d+\.\d+)% of\s+([\d.]+[G|M]iB)/';
+                    preg_match_all($pattern, Str::squish($output), $matches, PREG_SET_ORDER);
+                }
+
                 if (Str::position($output, "Destination:") !== false) {
                     $count++;
                 }
