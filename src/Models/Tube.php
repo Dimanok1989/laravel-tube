@@ -44,20 +44,6 @@ class Tube extends Model
     ];
 
     /**
-     * Bootstrap the model and its traits.
-     *
-     * @return void
-     */
-    public static function boot()
-    {
-        parent::boot();
-
-        static::creating(function (self $tube) {
-            $tube->disk = $tube->disk ?: TubeService::getDiskName();
-        });
-    }
-
-    /**
      * Файлы, принадлежащие процессу загрущки
      * 
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

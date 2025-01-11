@@ -143,6 +143,7 @@ class TubeService
         ], [
             'uuid' => Str::orderedUuid()->toString(),
             'status' => DownloadStatuses::init_download,
+            'disk' => $this->getDiskName(),
         ]);
 
         TubeInitDownloadEvent::dispatch(self::$tube);
@@ -171,7 +172,7 @@ class TubeService
 
         foreach ($meta->formats() as $video) {
 
-            if (self::$tube->videos->firstWhere('format', "{$video}p")) {
+            if (self::$tube->videos->firstWhere('format_id', $video)) {
                 continue;
             }
 
@@ -244,11 +245,14 @@ class TubeService
             }
         };
 
-        try {
-            $path = $this->client->download($video, $audio, $cb);
-            TubeDownloadedFileEvent::dispatch(self::$tube, $path, $this->meta, $video, $audio);
-        } catch (\Exception $e) {
-            TubeDownloadFileErrorEvent::dispatch(self::$tube, $e->getMessage(), $video, $audio);
+        for ($i = 0; $i < 3; $i++) {
+            try {
+                $path = $this->client->download($video, $audio, $cb);
+                TubeDownloadedFileEvent::dispatch(self::$tube, $path, $this->meta, $video, $audio);
+                break;
+            } catch (\Exception $e) {
+                TubeDownloadFileErrorEvent::dispatch(self::$tube, $e->getMessage(), $video, $audio);
+            }
         }
 
         return $path ?? null;

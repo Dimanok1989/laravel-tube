@@ -159,7 +159,7 @@ class YtDlp implements ClientIterface
 
         $dir = $path = $this->service->path($this->meta->extractor, $this->meta->id);
 
-        $basename = Str::slug($this->meta->title) . ".[%(vcodec)s].{$formatNote}.%(ext)s";
+        $basename = Str::slug($this->meta->title) . ".{$format}.{$formatNote}.%(ext)s";
         $path = "$dir/$basename";
 
         $thumbnail = $dir . "/thumbnail.%(ext)s";

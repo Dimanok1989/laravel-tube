@@ -2,6 +2,7 @@
 
 namespace Kolgaev\Tube\Jobs;
 
+use App\Events\Tube\DownloadProgressEvent;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
@@ -10,8 +11,10 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Kolgaev\Tube\Models\Tube;
 use Kolgaev\Tube\TubeService;
+use Throwable;
 
 class TubeDownloadJob implements ShouldQueue, ShouldBeUnique, ShouldBeEncrypted
 {
@@ -30,6 +33,13 @@ class TubeDownloadJob implements ShouldQueue, ShouldBeUnique, ShouldBeEncrypted
      * @var int
      */
     public $timeout = 3600;
+
+    /**
+     * Модель видео
+     * 
+     * @var null|\Kolgaev\Tube\Models\Tube
+     */
+    protected $tube;
 
     /**
      * Create a new job instance.
@@ -55,12 +65,24 @@ class TubeDownloadJob implements ShouldQueue, ShouldBeUnique, ShouldBeEncrypted
      */
     public function handle(): void
     {
-        $tube = Tube::findOrFail($this->tubeId);
-        (new TubeService($tube))->handle();
+        $this->tube = Tube::findOrFail($this->tubeId);
+        (new TubeService($this->tube))->handle();
     }
 
-    public function failed($e)
+    /**
+     * Обработка ошибки задания
+     * 
+     * @param null|\Throwable $exception
+     * @return void
+     */
+    public function failed(?Throwable $exception): void
     {
-        \Log::error($e);
+        Log::error("tube-download-video-id-" . $this->tubeId, [
+            'exception' => $exception
+        ]);
+
+        DownloadProgressEvent::dispatch($this->tube->uuid, self::class, [
+            'error' => optional($exception->getMessage()) ?: "Ошибка загрузки видео",
+        ]);
     }
 }
