@@ -5,7 +5,7 @@ namespace Kolgaev\Tube\Resources;
 use ArrayAccess;
 use Illuminate\Http\Resources\DelegatesToResource;
 
-class Resource implements ArrayAccess
+class Resource
 {
     use DelegatesToResource;
 
@@ -25,5 +25,10 @@ class Resource implements ArrayAccess
     public function __construct($resource)
     {
         $this->resource = $resource;
+    }
+
+    public function toArray()
+    {
+        return $this->resource->toArray();
     }
 }

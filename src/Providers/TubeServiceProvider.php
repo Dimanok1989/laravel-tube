@@ -4,17 +4,21 @@ namespace Kolgaev\Tube\Providers;
 
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
-use Kolgaev\Tube\Console\Commands\DownloadCommand;
-use Kolgaev\Tube\Events\TubeDoneEvent;
-use Kolgaev\Tube\Events\TubeDownloadedEvent;
-use Kolgaev\Tube\Events\TubeDownloadProgressAudioEvent;
-use Kolgaev\Tube\Events\TubeDownloadProgressVideoEvent;
-use Kolgaev\Tube\Events\TubeFailEvent;
-use Kolgaev\Tube\Events\WebhookEvent;
-use Kolgaev\Tube\Listeners\DownloadDoneProcess;
-use Kolgaev\Tube\Listeners\DownloadedFiles;
-use Kolgaev\Tube\Listeners\DownloadProgress;
-use Kolgaev\Tube\Listeners\Webhook;
+use Kolgaev\Tube\Console\DownloadCommand;
+use Kolgaev\Tube\Events\TubeDownloadDoneEvent;
+use Kolgaev\Tube\Events\TubeDownloadedFileEvent;
+use Kolgaev\Tube\Events\TubeDownloadFileErrorEvent;
+use Kolgaev\Tube\Events\TubeDownloadFileEvent;
+use Kolgaev\Tube\Events\TubeInitDownloadEvent;
+use Kolgaev\Tube\Events\TubeReceivedMetaEvent;
+use Kolgaev\Tube\Events\TubeStartDownloadEvent;
+use Kolgaev\Tube\Listeners\TubeDownloadDoneListener;
+use Kolgaev\Tube\Listeners\TubeDownloadedFileListener;
+use Kolgaev\Tube\Listeners\TubeDownloadFileErrorListener;
+use Kolgaev\Tube\Listeners\TubeDownloadFileListener;
+use Kolgaev\Tube\Listeners\TubeInitDownloadListener;
+use Kolgaev\Tube\Listeners\TubeReceivedMetaListener;
+use Kolgaev\Tube\Listeners\TubeStartDownloadListener;
 
 class TubeServiceProvider extends ServiceProvider
 {
@@ -45,16 +49,12 @@ class TubeServiceProvider extends ServiceProvider
             ]);
         }
 
-        // Процесс скачивания файлов
-        Event::listen(TubeDownloadProgressVideoEvent::class, DownloadProgress::class);
-        Event::listen(TubeDownloadProgressAudioEvent::class, DownloadProgress::class);
-        Event::listen(TubeDownloadedEvent::class, DownloadedFiles::class);
-
-        // Обработка webhook
-        Event::listen(WebhookEvent::class, Webhook::class);
-
-        // Завершение всего процесса
-        Event::listen(TubeDoneEvent::class, DownloadDoneProcess::class);
-        Event::listen(TubeFailEvent::class, DownloadDoneProcess::class);
+        Event::listen(TubeInitDownloadEvent::class, TubeInitDownloadListener::class);
+        Event::listen(TubeReceivedMetaEvent::class, TubeReceivedMetaListener::class);
+        Event::listen(TubeStartDownloadEvent::class, TubeStartDownloadListener::class);
+        Event::listen(TubeDownloadFileEvent::class, TubeDownloadFileListener::class);
+        Event::listen(TubeDownloadFileErrorEvent::class, TubeDownloadFileErrorListener::class);
+        Event::listen(TubeDownloadedFileEvent::class, TubeDownloadedFileListener::class);
+        Event::listen(TubeDownloadDoneEvent::class, TubeDownloadDoneListener::class);
     }
 }
