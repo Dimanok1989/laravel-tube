@@ -3,7 +3,6 @@
 namespace Kolgaev\Tube\Jobs;
 
 use App\Events\Tube\DownloadProgressEvent;
-use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
