@@ -24,3 +24,8 @@ sudo apt install yt-dlp
 ```bash
 sudo apt install ffmpeg
 ```
+
+Обновление при установке через PyPi
+```bash
+pip install --upgrade yt-dlp
+```
