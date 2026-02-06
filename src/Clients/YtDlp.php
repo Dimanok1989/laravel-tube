@@ -71,7 +71,7 @@ class YtDlp implements ClientIterface
     private function ytdlp()
     {
         return collect([
-            'yt-dlp',
+            env('YT_DLP_PATH', 'yt-dlp'),
             $this->proxy
         ])->filter()->join(" ");
     }
