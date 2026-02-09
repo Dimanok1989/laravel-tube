@@ -87,7 +87,7 @@ class YtDlp implements ClientIterface
 
         $data = Cache::remember(
             $command,
-            now()->addMonth(),
+            now()->addMinutes(20),
             function () use ($command) {
 
                 $process = Process::run($command);
